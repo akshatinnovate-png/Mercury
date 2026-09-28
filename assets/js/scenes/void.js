@@ -11,6 +11,27 @@ import { Planet } from './planet.js';
 import { scrub } from '../core/scroll.js';
 import { makeStars, drawStars } from './atmos.js';
 
+/* Mercury is the closest planet to the sun, so the sun belongs in frame.
+   Drawn small and far off to the side: it lights the scene, it is not the
+   subject. */
+function drawSun(ctx, w, h, x, y, r, a) {
+  if (a <= 0.01) return;
+  const core = ctx.createRadialGradient(x, y, 0, x, y, r);
+  core.addColorStop(0, `rgba(255,255,255,${a})`);
+  core.addColorStop(0.35, `rgba(240,246,255,${a * 0.5})`);
+  core.addColorStop(1, 'rgba(210,226,255,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+
+  // anamorphic streak, the one piece of lens language the scene allows
+  const streak = ctx.createLinearGradient(x - r * 7, y, x + r * 7, y);
+  streak.addColorStop(0, 'rgba(190,214,255,0)');
+  streak.addColorStop(0.5, `rgba(226,238,255,${a * 0.30})`);
+  streak.addColorStop(1, 'rgba(190,214,255,0)');
+  ctx.fillStyle = streak;
+  ctx.fillRect(x - r * 7, y - r * 0.09, r * 14, r * 0.18);
+}
+
 /* Hubs are placed by lat/lon so the corridors read as real routes. */
 const HUBS = [
   ['ASL',  38.9, -77.0], ['LSF',  48.9,   2.4], ['BSL',  51.5,  -0.1],
@@ -32,6 +53,11 @@ export function sceneVoid() {
   const rand    = rng(7);
   // fewer stars than before: the planet is the subject, not the field
   const stars   = makeStars(300, 7);
+  // motes drifting between camera and planet, to give the void a near plane
+  const dust    = Array.from({ length: 70 }, () => ({
+    x: rand(), y: rand(), z: 0.3 + rand() * 0.7,
+    r: 0.5 + rand() * 1.5, sp: 0.004 + rand() * 0.016, p: rand() * TAU
+  }));
   const hubs    = HUBS.map(([n, la, lo]) => ({ name: n, v: toVec(la, lo) }));
   const routes  = [];
   for (let i = 0; i < hubs.length; i++) {
@@ -69,12 +95,26 @@ export function sceneVoid() {
     /* ---- starfield: near bands drift hardest, which reads as depth ---- */
     drawStars(ctx, w, h, stars, t, { scroll: prog * 0.5, alpha: fade });
 
+    /* ---- the sun, far off and small ---- */
+    drawSun(ctx, w, h, w * 0.055 - prog * w * 0.06, h * 0.16,
+            Math.min(w, h) * 0.020, fade * 0.95);
+
     /* ---- the planet itself ---- */
     const R = fov / camZ * 0.66;
     // Mercury turns once every 59 days. This is faster than that and still
     // slow enough that it reads as a body in motion rather than a spin.
     const spin = t * 0.021 + prog * 0.55;
     planet.draw(ctx, w / 2, h * 0.5, R, spin, { glow: 1, alpha: fade });
+
+    /* ---- dust in the foreground, lit from the sun side ---- */
+    for (const d of dust) {
+      const dx = ((d.x + t * d.sp * 0.05) % 1) * w;
+      const dy = ((d.y - t * d.sp * 0.03) % 1 + 1) % 1 * h;
+      const a = (0.10 + Math.sin(t * 0.8 + d.p) * 0.08) * d.z * fade;
+      if (a <= 0.005) continue;
+      ctx.fillStyle = `rgba(226,233,245,${a})`;
+      ctx.beginPath(); ctx.arc(dx, dy, d.r * d.z, 0, TAU); ctx.fill();
+    }
 
     /* ---- corridors: signal travelling between sign languages ---- */
     routes.forEach((rt, i) => {

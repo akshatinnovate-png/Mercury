@@ -62,6 +62,7 @@ export class Planet {
     const row = new Int32Array(n);        // texture row * mapW
     const lonIdx = new Float32Array(n);   // base column, in texels
     const light = new Float32Array(n);
+    const fresnel = new Float32Array(n);
     const edge = new Float32Array(n);
     const inside = new Uint8Array(n);
 
@@ -84,15 +85,21 @@ export class Planet {
         row[i] = v * this.mapW;
         lonIdx[i] = (lon / TAU + 0.5) * this.mapW;
 
-        // Lambert, softened — a hard terminator looks like a cut-out
+        // Lambert with a wrapped terminator: real bodies do not cut to
+        // black at exactly 90 degrees, they fall off through a soft band
         const d = nx * SUN.x + ny * SUN.y + nz * SUN.z;
-        light[i] = Math.pow(Math.max(0, d), 0.78);
+        light[i] = Math.pow(Math.max(0, (d + 0.13) / 1.13), 0.82);
+
+        // grazing light along the limb, which is what gives a sphere its
+        // edge instead of letting it dissolve into the background
+        const graze = Math.pow(1 - nz, 3.0);
+        fresnel[i] = graze * Math.max(0, d * 0.6 + 0.4);
 
         // antialias the silhouette instead of leaving a stair-stepped edge
         edge[i] = clamp((1 - Math.sqrt(r2)) * R * 1.4, 0, 1);
       }
     }
-    this.lut = { S, row, lonIdx, light, edge, inside };
+    this.lut = { S, row, lonIdx, light, fresnel, edge, inside };
     this.lutR = R;
 
     this.canvas = document.createElement('canvas');
@@ -110,7 +117,7 @@ export class Planet {
     R = Math.max(8, Math.round(R));
     if (!this.lut || this.lutR !== R) this._buildLut(R);
 
-    const { S, row, lonIdx, light, edge, inside } = this.lut;
+    const { S, row, lonIdx, light, fresnel, edge, inside } = this.lut;
     const map = this.map, mapW = this.mapW;
     const px = this.buf.data;
     const off = (rotation / TAU) * mapW;
