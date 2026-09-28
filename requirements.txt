@@ -1,0 +1,7 @@
+# Mercury has one dependency, and the site runs without it.
+#
+# qdrant-client powers two things: calibrating the recogniser to your own
+# hands, and searching what you have said. Skip it and everything else —
+# camera, recognition, the neural model, speech, the story page — still works;
+# the studio simply reports the vector store as off.
+qdrant-client>=1.7
