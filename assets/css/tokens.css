@@ -1,0 +1,70 @@
+/* ================================================================
+   MERCURY — design tokens
+   One palette, three climates: VOID (space), PAPER (daylight),
+   PLASMA (the lab). Everything else is derived.
+   ================================================================ */
+:root{
+  /* --- climate: void --- */
+  --void-0:#04060d;
+  --void-1:#070b18;
+  --void-2:#0d1426;
+  --void-3:#16203a;
+
+  /* --- climate: paper --- */
+  --paper-0:#f7f7f4;
+  --paper-1:#eceae4;
+  --ink-0:#0a0a0b;
+  --ink-1:#2b2d33;
+  --ink-2:#8e9199;
+
+  /* --- climate: plasma (the lab) --- */
+  --plasma:#f77fa8;
+  --plasma-deep:#2a1a20;
+
+  /* --- signal accents --- */
+  --signal:#ff6b1a;      /* molten amber — the planet closest to the sun */
+  --signal-dim:#a8410c;
+  --pulse:#4de8ff;       /* electric cyan — data in flight */
+  --pulse-dim:#1a7a8c;
+  --quicksilver:#c8ccd6;
+
+  /* --- semantic --- */
+  --bg:var(--void-0);
+  --fg:#ffffff;
+  --fg-mute:rgba(255,255,255,.52);
+  --rule:rgba(255,255,255,.14);
+
+  /* --- type --- */
+  --display:'Archivo',-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+
+  --fs-xl:clamp(3.4rem,11.5vw,11rem);
+  --fs-lg:clamp(2.6rem,7.6vw,7rem);
+  --fs-md:clamp(1.9rem,4.4vw,3.9rem);
+  --fs-lede:clamp(.95rem,1.35vw,1.2rem);
+  --fs-mono:clamp(.6rem,.78vw,.72rem);
+
+  /* --- metrics --- */
+  --shell:clamp(1.2rem,5.2vw,7rem);
+  --maxw:1680px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --ease-io:cubic-bezier(.76,0,.24,1);
+
+  /* --- z --- */
+  --z-scene:1;
+  --z-copy:4;
+  --z-hud:40;
+  --z-nav:50;
+  --z-cursor:90;
+  --z-boot:100;
+}
+
+/* climate switches applied per-section by the observer */
+/* The chrome (nav, ticker, hud, cursor) reads --bg/--fg, so flipping these
+   inverts the whole persistent layer over the daylight acts. */
+[data-climate="paper"]{
+  --bg:var(--paper-0);
+  --fg:var(--ink-0);
+  --fg-mute:var(--ink-2);
+  --rule:rgba(10,10,11,.16);
+}

@@ -1,0 +1,17 @@
+/* ================================================================
+   MERCURY — self-hosted type
+   Vendored so the site renders identically offline and on a judging
+   machine with no network. Archivo is variable on both weight and
+   width, which is what the display headings lean on.
+   ================================================================ */
+@font-face{
+  font-family:'Archivo';
+  src:url('../fonts/archivo-var.woff2') format('woff2-variations');
+  font-weight:100 900;
+  font-stretch:62% 125%;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{font-family:'JetBrains Mono';src:url('../fonts/jbmono-400.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('../fonts/jbmono-500.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('../fonts/jbmono-700.woff2') format('woff2');font-weight:700;font-display:swap}

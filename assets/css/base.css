@@ -1,0 +1,94 @@
+/* ================================================================
+   MERCURY — reset + primitives
+   ================================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--void-0);color:var(--fg);
+  font-family:var(--display);font-variation-settings:'wdth' 100;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+body.is-booting{overflow:hidden;height:100vh}
+img,svg,canvas{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,p,ul{margin:0}
+ul{list-style:none;padding:0}
+::selection{background:var(--signal);color:#000}
+
+.shell{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:var(--shell)}
+
+/* ---------- display type ---------- */
+.display{
+  font-weight:800;font-variation-settings:'wdth' 112,'wght' 820;
+  line-height:.86;letter-spacing:-.035em;text-transform:uppercase;
+}
+.display--xl{font-size:var(--fs-xl)}
+.display--lg{font-size:var(--fs-lg)}
+.display--md{font-size:var(--fs-md);line-height:.94}
+.display .line{display:block;overflow:hidden}
+.display .word{display:block;will-change:transform}
+.muted{color:var(--fg-mute)}
+
+/* ghost type — the giant outline word behind a scene */
+.ghost-type{
+  position:absolute;left:50%;top:46%;translate:-50% -50%;
+  font-size:clamp(7rem,26vw,22rem);font-weight:900;
+  font-variation-settings:'wdth' 125,'wght' 900;
+  letter-spacing:-.05em;line-height:1;white-space:nowrap;
+  color:transparent;-webkit-text-stroke:1px var(--fg);opacity:.11;
+  pointer-events:none;user-select:none;z-index:0;
+}
+
+/* ---------- body copy ---------- */
+.lede{
+  font-size:var(--fs-lede);line-height:1.55;color:var(--fg-mute);
+  max-width:44ch;font-weight:450;letter-spacing:-.005em;
+}
+.lede--sm{font-size:clamp(.85rem,1.1vw,1rem);max-width:38ch}
+.lede--light{color:rgba(255,255,255,.72)}
+
+/* ---------- mono micro ---------- */
+.mono-label,.eyebrow{
+  font-family:var(--mono);font-size:var(--fs-mono);
+  letter-spacing:.22em;text-transform:uppercase;font-weight:500;
+}
+.mono-label{color:var(--fg-mute)}
+.eyebrow{display:flex;align-items:center;gap:.7em;color:var(--fg-mute)}
+.eyebrow--light{color:rgba(255,255,255,.62)}
+.tick{width:6px;height:6px;background:var(--signal);border-radius:50%;flex:none;
+  box-shadow:0 0 0 0 var(--signal);animation:tick 2.4s var(--ease) infinite}
+@keyframes tick{0%{box-shadow:0 0 0 0 rgba(255,107,26,.6)}70%,100%{box-shadow:0 0 0 9px rgba(255,107,26,0)}}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--pulse);display:inline-block;flex:none;
+  animation:breathe 1.8s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---------- buttons ---------- */
+.pill{
+  --pill-fg:var(--fg);
+  display:inline-flex;align-items:center;gap:.7em;
+  padding:.95em 1.7em;border:1px solid var(--rule);border-radius:100px;
+  font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.18em;
+  text-transform:uppercase;font-weight:500;color:var(--pill-fg);
+  position:relative;overflow:hidden;isolation:isolate;
+  transition:color .45s var(--ease),border-color .45s var(--ease);
+}
+.pill::after{
+  content:"";position:absolute;inset:0;z-index:-1;background:var(--fg);
+  translate:0 101%;border-radius:50% 50% 0 0;
+  transition:translate .55s var(--ease),border-radius .55s var(--ease);
+}
+.pill:hover{color:var(--bg);border-color:var(--fg)}
+.pill:hover::after{translate:0 0;border-radius:0}
+.pill--solid{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pill--solid::after{background:var(--signal)}
+.pill--solid:hover{color:#000;border-color:var(--signal)}
+.pill--lg{padding:1.2em 2.3em}
+.cta-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.4rem}
+.cta-row--center{justify-content:center}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+}

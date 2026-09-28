@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en" data-theme="void">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MERCURY — Every Hand Has a Voice</title>
+<meta name="description" content="Mercury is an AI sign language interpreter. It reads the hand, understands the intent, and gives it a voice — in real time.">
+<meta name="theme-color" content="#04060d">
+
+<link rel="preload" href="assets/fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin>
+
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/chrome.css">
+<link rel="stylesheet" href="assets/css/acts.css">
+<link rel="stylesheet" href="assets/css/lab.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23FF6B1A' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='%234DE8FF'/></svg>">
+</head>
+<body>
+
+<!-- ============================================ BOOT ============================================ -->
+<div class="boot" id="boot" aria-hidden="true">
+  <div class="boot__dither" id="bootDither"></div>
+  <div class="boot__win">
+    <div class="boot__bar"><span>MERCURY v0.1</span><span class="boot__dots">■ ■ ■</span></div>
+    <div class="boot__body">
+      <p class="boot__log" id="bootLog">Initialising interpreter&hellip;</p>
+      <div class="boot__meter"><i id="bootFill"></i><b id="bootPct">00%</b></div>
+      <p class="boot__hint">21 landmarks · 26 handshapes · 1 voice</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ CHROME ============================================ -->
+<div class="cursor" id="cursor" aria-hidden="true">
+  <svg viewBox="0 0 48 48" class="cursor__ring"><circle cx="24" cy="24" r="21"/><circle cx="24" cy="24" r="21" class="cursor__prog" id="cursorProg"/></svg>
+  <i class="cursor__dot"></i>
+  <span class="cursor__label" id="cursorLabel"></span>
+</div>
+
+<div class="ticker" aria-hidden="true">
+  <div class="ticker__rail" id="tickerRail"></div>
+</div>
+
+<header class="nav" id="nav">
+  <a class="nav__mark" href="#top" data-cursor="TOP">
+    <svg viewBox="0 0 40 40" class="nav__glyph"><circle cx="20" cy="20" r="11"/><circle cx="20" cy="20" r="3.2" class="nav__glyph-core"/><path d="M20 4v5M20 31v5M4 20h5M31 20h5"/></svg>
+    <span class="nav__word">MERCURY</span>
+  </a>
+  <nav class="nav__links">
+    <a href="#act-hand" data-cursor="READ"><i>01</i>The Hand</a>
+    <a href="#act-pipeline" data-cursor="TRACE"><i>02</i>Pipeline</a>
+    <a href="#act-wave" data-cursor="HEAR"><i>03</i>The Voice</a>
+    <a href="#act-lab" data-cursor="OPEN"><i>04</i>The Lab</a>
+  </nav>
+  <div class="nav__end">
+    <span class="nav__stat"><i class="dot"></i><b id="navLatency">—</b> ms</span>
+    <a class="pill pill--solid" href="#act-close" data-cursor="START">START SIGNING</a>
+  </div>
+</header>
+
+<!-- telemetry rail -->
+<aside class="hud" id="hud" aria-hidden="true">
+  <div class="hud__row"><span>ACT</span><b id="hudAct">I</b></div>
+  <div class="hud__row"><span>SCENE</span><b id="hudScene">VOID</b></div>
+  <div class="hud__row"><span>FPS</span><b id="hudFps">60</b></div>
+  <div class="hud__bar"><i id="hudProg"></i></div>
+  <div class="hud__row hud__row--sm"><span>SCROLL</span><b id="hudPct">000</b></div>
+</aside>
+
+<main id="top">
+
+<!-- ============================================ ACT I — THE VOID ============================================ -->
+<section class="act act--void" id="act-void" data-act="I" data-scene="VOID">
+  <div class="void__sticky">
+    <canvas id="cvVoid" class="scene-canvas"></canvas>
+    <div class="void__vignette"></div>
+
+    <div class="void__copy shell">
+      <p class="eyebrow"><i class="tick"></i>ROMAN GOD OF SPEECH &amp; MESSAGES</p>
+      <h1 class="display display--xl">
+        <span class="line"><span class="word">EVERY</span></span>
+        <span class="line"><span class="word">HAND HAS</span></span>
+        <span class="line"><span class="word muted">A VOICE</span></span>
+      </h1>
+      <p class="lede">An AI interpreter that watches the hand, understands the intent, and answers out loud — in the time it takes to finish the sign.</p>
+      <div class="cta-row">
+        <a class="pill pill--solid" href="#act-hand" data-cursor="SCROLL">SEE IT READ A HAND</a>
+        <a class="pill" href="#act-lab" data-cursor="OPEN">ENTER THE LAB</a>
+      </div>
+    </div>
+
+    <div class="void__meta">
+      <div class="meta__cell"><b>72</b><span>languages mapped</span></div>
+      <div class="meta__cell"><b>21</b><span>landmarks per hand</span></div>
+      <div class="meta__cell"><b>1.2B</b><span>people served</span></div>
+    </div>
+
+    <div class="scroll-cue" aria-hidden="true"><span>SCROLL</span><i></i></div>
+  </div>
+</section>
+
+<!-- ============================================ ACT II — DESCENT ============================================ -->
+<section class="act act--descent" id="act-descent" data-act="II" data-scene="DESCENT">
+  <div class="descent__sticky">
+    <div class="descent__sky" id="descentSky"></div>
+    <div class="descent__copy">
+      <p class="descent__kicker" id="descentKicker">ENTERING RANGE</p>
+      <h2 class="display display--lg descent__line">
+        <span class="line"><span class="word">SIGN IS NOT</span></span>
+        <span class="line"><span class="word">MIME. IT IS</span></span>
+        <span class="line"><span class="word">GRAMMAR.</span></span>
+      </h2>
+      <p class="descent__note">Handshape. Location. Movement. Orientation. Expression.<br>Five channels, spoken at once. Mercury reads all five.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ ACT III — THE HAND ============================================ -->
+<section class="act act--hand" id="act-hand" data-act="III" data-scene="HAND">
+  <div class="hand__sticky">
+    <h2 class="ghost-type" id="handGhost" aria-hidden="true">READING</h2>
+    <canvas id="cvHand" class="scene-canvas"></canvas>
+
+    <div class="hand__panel hand__panel--l">
+      <p class="mono-label">LANDMARK STREAM</p>
+      <ul class="lmk" id="lmkList"></ul>
+    </div>
+
+    <div class="hand__panel hand__panel--r">
+      <p class="mono-label">INFERENCE</p>
+      <div class="infer">
+        <div class="infer__glyph" id="inferGlyph">M</div>
+        <div class="infer__meta">
+          <span class="infer__name" id="inferName">EM</span>
+          <span class="infer__conf">CONFIDENCE <b id="inferConf">0.00</b></span>
+        </div>
+      </div>
+      <div class="bars" id="inferBars"></div>
+    </div>
+
+    <div class="hand__caption shell">
+      <p class="eyebrow"><i class="tick"></i>ACT III — THE HAND</p>
+      <h3 class="display display--md">TWENTY&#8209;ONE POINTS.<br><span class="muted">ONE MEANING.</span></h3>
+      <p class="lede lede--sm">Scroll to move the hand. Mercury tracks knuckle, joint and tip in three dimensions, then resolves the shape against a 26&#8209;letter grammar — frame by frame, at the speed of the signer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ ACT IV — PIPELINE ============================================ -->
+<section class="act act--pipeline" id="act-pipeline" data-act="IV" data-scene="PIPELINE">
+  <div class="pipe__sticky">
+    <canvas id="cvPipe" class="scene-canvas"></canvas>
+    <div class="pipe__hud">
+      <p class="mono-label">END&#8209;TO&#8209;END LATENCY</p>
+      <p class="pipe__ms"><b id="pipeMs">000</b><span>ms</span></p>
+      <p class="mono-label pipe__stage" id="pipeStage">AWAITING SIGNAL</p>
+    </div>
+    <div class="pipe__title shell">
+      <h2 class="display display--lg"><span class="muted">FROM GESTURE</span><br>TO SENTENCE.</h2>
+    </div>
+    <div class="pipe__cards" id="pipeCards"></div>
+  </div>
+</section>
+
+<!-- ============================================ ACT V — THE VOICE ============================================ -->
+<section class="act act--wave" id="act-wave" data-act="V" data-scene="VOICE">
+  <div class="wave__sticky">
+    <canvas id="cvWave" class="scene-canvas"></canvas>
+    <div class="wave__center shell">
+      <p class="eyebrow eyebrow--light"><i class="tick"></i>ACT V — THE VOICE</p>
+      <h2 class="display display--lg">AND THEN<br><span class="muted">IT SPEAKS.</span></h2>
+      <p class="lede lede--light">Gloss becomes grammar. Grammar becomes speech. The room hears what the hands said — with the signer&rsquo;s own cadence, not a robot&rsquo;s.</p>
+      <div class="caption-box" id="captionBox"><i class="caption__cue"></i><span id="captionText"></span><b class="caret"></b></div>
+    </div>
+    <div class="wave__grid" id="waveGrid"></div>
+  </div>
+</section>
+
+<!-- ============================================ ACT VI — ASCENT ============================================ -->
+<section class="act act--ascent" id="act-ascent" data-act="VI" data-scene="ASCENT">
+  <div class="ascent__sticky">
+    <canvas id="cvAscent" class="scene-canvas"></canvas>
+    <div class="ascent__copy shell">
+      <h2 class="display display--lg">ONE SIGNER.<br><span class="muted">EVERY ROOM.</span></h2>
+      <p class="lede lede--light">A classroom in Nagpur. A pharmacy counter in Lisbon. A 3am emergency line.<br>Mercury runs on the glass already in the pocket.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ ACT VII — THE LAB ============================================ -->
+<section class="act act--lab" id="act-lab" data-act="VII" data-scene="LAB">
+  <div class="lab__dither" id="labDither"></div>
+
+  <div class="lab__chrome shell">
+    <div class="lab__badge">
+      <div class="lab__badge-bar">MERCURY.LAB</div>
+      <div class="lab__badge-body">
+        <p>Version 0.1 &mdash; interface build</p>
+        <p>&copy;2026. Built for the bench.</p>
+      </div>
+    </div>
+    <div class="lab__life">
+      <canvas id="cvLife" width="120" height="120"></canvas>
+      <p>Game of Life</p>
+    </div>
+  </div>
+
+  <div class="lab__hero">
+    <span class="crop crop--tl"></span><span class="crop crop--tr"></span>
+    <span class="crop crop--bl"></span><span class="crop crop--br"></span>
+    <h2 class="lab__huge">We Built The<br>Interpreter<br>Backwards</h2>
+  </div>
+
+  <p class="lab__foot">*Latency measured sign&#8209;onset to audible output. <a href="#act-close" data-cursor="PROOF">(Proof)</a></p>
+
+  <div class="lab__stat">
+    <h3 class="lab__huge lab__huge--stat">14&times; Faster,<br>Zero Wait.</h3>
+  </div>
+
+  <div class="lab__race">
+    <p class="lab__race-title">MERCURY</p>
+    <div class="win">
+      <div class="win__bar"><span>mercury — live interpret</span><i>▣</i></div>
+      <pre class="win__body" id="raceA"></pre>
+    </div>
+    <p class="lab__race-title">CAPTION RELAY</p>
+    <div class="win win--muted">
+      <div class="win__bar"><span>relay — human queue</span><i>▣</i></div>
+      <pre class="win__body" id="raceB"></pre>
+    </div>
+  </div>
+
+  <div class="lab__cols">
+    <div class="lab__col"><p class="mono-label">NOT A DICTIONARY</p><p>Word&#8209;for&#8209;word lookup breaks the moment a signer uses space, speed or face. Mercury models the whole utterance.</p></div>
+    <div class="lab__col"><p class="mono-label">RUNS ON DEVICE</p><p>The landmark pass never leaves the phone. Nothing about a private conversation is uploaded to be understood.</p></div>
+    <div class="lab__col lab__col--b64"><p class="mono-label">[B.64]</p><p class="b64" id="b64"></p></div>
+  </div>
+</section>
+
+<!-- ============================================ ACT VIII — CLOSE ============================================ -->
+<section class="act act--close" id="act-close" data-act="VIII" data-scene="CLOSE">
+  <div class="close__inner shell">
+    <p class="eyebrow"><i class="tick"></i>THE MESSENGER IS READY</p>
+    <h2 class="display display--xl close__line">
+      <span class="line"><span class="word">SAY IT</span></span>
+      <span class="line"><span class="word muted">WITH YOUR</span></span>
+      <span class="line"><span class="word">HANDS.</span></span>
+    </h2>
+    <div class="cta-row cta-row--center">
+      <a class="pill pill--solid pill--lg" href="#top" data-cursor="SOON">OPEN THE INTERPRETER</a>
+      <a class="pill pill--lg" href="#act-lab" data-cursor="READ">READ THE PAPER</a>
+    </div>
+  </div>
+  <canvas id="cvClose" class="scene-canvas"></canvas>
+</section>
+
+<footer class="foot">
+  <div class="foot__grid shell">
+    <div class="foot__brand">
+      <svg viewBox="0 0 40 40" class="nav__glyph"><circle cx="20" cy="20" r="11"/><circle cx="20" cy="20" r="3.2" class="nav__glyph-core"/><path d="M20 4v5M20 31v5M4 20h5M31 20h5"/></svg>
+      <p>MERCURY</p>
+      <span>Roman god of speech, messages and crossings between worlds.</span>
+    </div>
+    <div class="foot__col"><p class="mono-label">PROJECT</p><a href="#act-hand">The Hand</a><a href="#act-pipeline">Pipeline</a><a href="#act-wave">The Voice</a><a href="#act-lab">The Lab</a></div>
+    <div class="foot__col"><p class="mono-label">BUILT WITH</p><span>Python</span><span>WebGL</span><span>Canvas 2D</span><span>No stock imagery</span></div>
+    <div class="foot__col"><p class="mono-label">STATUS</p><span class="live"><i class="dot"></i>INTERFACE BUILD</span><span id="footClock">--:--:--</span></div>
+  </div>
+  <div class="foot__rule"></div>
+  <p class="foot__end"><span>MERCURY &mdash; AI SIGN LANGUAGE HELPER</span><span>EVERY HAND HAS A VOICE</span></p>
+</footer>
+
+</main>
+
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/vendor/lenis.min.js"></script>
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
