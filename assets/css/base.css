@@ -58,7 +58,7 @@ ul{list-style:none;padding:0}
 .eyebrow--light{color:rgba(255,255,255,.62)}
 .tick{width:6px;height:6px;background:var(--signal);border-radius:50%;flex:none;
   box-shadow:0 0 0 0 var(--signal);animation:tick 2.4s var(--ease) infinite}
-@keyframes tick{0%{box-shadow:0 0 0 0 rgba(255,107,26,.6)}70%,100%{box-shadow:0 0 0 9px rgba(255,107,26,0)}}
+@keyframes tick{0%{box-shadow:0 0 0 0 rgba(232,237,246,.55)}70%,100%{box-shadow:0 0 0 9px rgba(232,237,246,0)}}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--pulse);display:inline-block;flex:none;
   animation:breathe 1.8s ease-in-out infinite}
 @keyframes breathe{0%,100%{opacity:1}50%{opacity:.25}}

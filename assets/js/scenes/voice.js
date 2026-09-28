@@ -81,7 +81,7 @@ export function sceneVoice() {
       ctx.fill();
       ctx.beginPath();
       crest.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-      ctx.strokeStyle = `rgba(160,220,255,${0.05 + depth * 0.1})`;
+      ctx.strokeStyle = `rgba(196,210,232,${0.05 + depth * 0.1})`;
       ctx.lineWidth = 1; ctx.stroke();
     }
 
@@ -98,7 +98,7 @@ export function sceneVoice() {
       );
       const a = Math.abs(v) * h * 0.20 * (0.4 + e * 0.9);
       const alpha = 0.16 + Math.abs(v) * 0.5;
-      ctx.fillStyle = `rgba(77,232,255,${alpha})`;
+      ctx.fillStyle = `rgba(159,180,208,${alpha})`;
       ctx.fillRect(i * bw + bw * 0.22, mid - a, bw * 0.56, a * 2);
     }
 
@@ -107,7 +107,7 @@ export function sceneVoice() {
       const x = f.x * w;
       const y = ((f.y + t * f.v * 0.04) % 1) * h;
       const a = 0.14 + Math.sin(t * 2 + f.p) * 0.12;
-      ctx.fillStyle = `rgba(230,246,255,${Math.max(0, a)})`;
+      ctx.fillStyle = `rgba(236,241,250,${Math.max(0, a)})`;
       ctx.beginPath(); ctx.arc(x, y, f.r, 0, TAU); ctx.fill();
     }
   });
@@ -135,7 +135,7 @@ export function sceneClose() {
       const x = b.x * w;
       const y = ((b.y - t * b.v * 0.06) % 1 + 1) % 1 * h;
       const a = (0.12 + Math.sin(t * 1.6 + b.p) * 0.12);
-      ctx.fillStyle = `rgba(255,107,26,${Math.max(0, a)})`;
+      ctx.fillStyle = `rgba(226,233,245,${Math.max(0, a)})`;
       ctx.fillRect(x, y, b.r, b.r);
     }
   });

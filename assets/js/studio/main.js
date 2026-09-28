@@ -11,6 +11,7 @@ import { Tracker, STATE } from './camera.js';
 import { classify, Stabiliser, NOTES, TEMPLATES, MOTION_LETTERS } from './asl.js';
 import { Ensemble } from './ensemble.js';
 import { Holistic } from './holistic.js';
+import { Predictor } from './predict.js';
 import { encode } from './encode.js';
 import { drawOverlay } from './overlay.js';
 import { Speller } from './speller.js';
@@ -53,6 +54,7 @@ const SESSION = (() => {
 })();
 
 const ensemble = new Ensemble({ session: SESSION });
+const predictor = new Predictor();
 const holistic = new Holistic();
 let nmm = null;                 // latest non-manual reading
 let holisticAt = 0;
@@ -104,7 +106,11 @@ async function onFrame({ hands }, now) {
   const mode = app.mode;
   const inPractice = mode === 'practice';
   const inCalibrate = mode === 'calibrate';
-  const cv = inPractice ? $('#overlay2') : inCalibrate ? $('#overlay3') : $('#overlay');
+  const inConverse = mode === 'converse';
+  const cv = inPractice ? $('#overlay2')
+           : inCalibrate ? $('#overlay3')
+           : mode === 'converse' ? $('#overlay4')
+           : $('#overlay');
   if (!cv) return;
   const { ctx, w, h } = fitCanvas(cv);
 
@@ -123,7 +129,7 @@ async function onFrame({ hands }, now) {
     drawOverlay(ctx, w, h, [], { mirror: tracker.mirror });
     stab.reset();
     paintReading(null, 0, inPractice);
-    if (!inPractice && !inCalibrate && cfg.auto && app.letters && now - app.lastCommitAt > 2200) {
+    if (!inPractice && !inCalibrate && !inConverse && cfg.auto && app.letters && now - app.lastCommitAt > 2200) {
       app.lastCommitAt = now;
       buildSentence();
     }
@@ -144,6 +150,10 @@ async function onFrame({ hands }, now) {
 
   paintReading(res, progress, inPractice);
   paintSources(res);
+  if (inConverse) {
+    $('#convLetter').textContent = letter || '—';
+    setTurn('sign');
+  }
 
   if (committed) {
     if (inPractice) scorePractice(committed);
@@ -214,6 +224,8 @@ function commitLetter(ch, now = performance.now()) {
   app.letters += ch;
   app.lastCommitAt = now;          // same clock the auto-build compares against
   paintRaw(true);
+  paintSuggestions();
+  if (app.mode === 'converse') paintConverse();
 }
 
 function paintRaw(fresh = false) {
@@ -221,6 +233,37 @@ function paintRaw(fresh = false) {
   if (!app.letters) { el.innerHTML = '<span class="raw__empty">nothing yet</span>'; return; }
   const head = app.letters.slice(0, -1), tail = app.letters.slice(-1);
   el.innerHTML = `${head}<span class="${fresh ? 'fresh' : ''}">${tail}</span>`;
+}
+
+/* -------------------------------------------------- suggestions */
+/* The word being spelled is whatever follows the last space. */
+const currentWord = () => (app.letters.split(' ').pop() || '');
+
+function paintSuggestions() {
+  const word = currentWord();
+  const list = predictor.suggest(word, 3);
+  predictor.askModel(word, app.letters);
+
+  for (const sel of ['#sugg', '#convSugg']) {
+    const box = $(sel);
+    if (!box) continue;
+    if (!list.length) { box.innerHTML = ''; continue; }
+    box.innerHTML = list.map((s, i) =>
+      `<button class="sugg__chip ${s.source === 'yours' ? 'sugg__chip--yours' : ''}"
+               data-word="${s.word}"><kbd>${i + 1}</kbd><b>${s.word}</b><i>${s.source}</i></button>`
+    ).join('');
+  }
+}
+
+/** Replace the half-spelled word with the chosen completion. */
+function acceptSuggestion(word) {
+  if (!word) return;
+  const parts = app.letters.split(' ');
+  parts[parts.length - 1] = word;
+  app.letters = parts.join(' ') + ' ';
+  paintRaw();
+  paintSuggestions();
+  toast(word);
 }
 
 /* ------------------------------------------------ sentence build */
@@ -246,6 +289,8 @@ async function buildSentence() {
   if (app.sentence) {
     addLog(app.sentence, raw);
     voice.speak(app.sentence);
+    // every finished sentence teaches the completions
+    predictor.learn(app.sentence);
     // keep it, so it can be searched by meaning later
     fetch('/api/vectors/remember', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -323,8 +368,8 @@ export function drawPose(cv, letter, { spin = 0 } = {}) {
     return project(r, w, h, fov, 2.5);
   });
   ctx.beginPath(); palm.forEach((q,k)=>k?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)); ctx.closePath();
-  ctx.fillStyle='rgba(77,232,255,.09)'; ctx.fill();
-  ctx.strokeStyle='rgba(77,232,255,.26)'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.fillStyle='rgba(159,180,208,.09)'; ctx.fill();
+  ctx.strokeStyle='rgba(159,180,208,.26)'; ctx.lineWidth=1.2; ctx.stroke();
 
   ctx.lineCap = ctx.lineJoin = 'round';
   BONES.forEach(([a,b],bi)=>{
@@ -337,7 +382,7 @@ export function drawPose(cv, letter, { spin = 0 } = {}) {
   const TIPS=new Set([4,8,12,16,20]);
   P.forEach((p,i)=>{
     const d=clamp((p.z+1)/2);
-    ctx.fillStyle = TIPS.has(i) ? '#ff6b1a' : `rgba(255,255,255,${0.4+d*0.5})`;
+    ctx.fillStyle = TIPS.has(i) ? '#e8edf6' : `rgba(255,255,255,${0.4+d*0.5})`;
     ctx.beginPath(); ctx.arc(p.x,p.y,lerp(1.8,4,d),0,TAU); ctx.fill();
   });
 }
@@ -386,6 +431,77 @@ function buildAbc() {
     if ($('.panel[data-panel="reference"]').classList.contains('is-on')) requestAnimationFrame(paint);
     else abcBuilt = 'paused';
   });
+}
+
+/* ==================================================== CONVERSE === */
+/* Two people, one device. The signer is heard, the speaker is seen.
+   Both directions write into the same conversation. */
+let convSpeller = null;
+let convEars = null;
+
+function initConverse() {
+  if (convSpeller) return;
+  convSpeller = new Speller($('#convCanvas'), {
+    onLetter: (ch, i) => {
+      [...$('#convStrip').children].forEach((b, k) => {
+        b.classList.toggle('is-on', k === i);
+        b.classList.toggle('is-done', k < i);
+      });
+    }
+  });
+}
+
+function paintConverse() {
+  $('#convRaw').textContent = app.letters || '';
+  $('#convLetter').textContent = app.letters.slice(-1) || '—';
+}
+
+function setTurn(who) {
+  $('#turnSign')?.classList.toggle('is-live', who === 'sign');
+  $('#turnSpeak')?.classList.toggle('is-live', who === 'speak');
+}
+
+function addChat(side, text, detail = '') {
+  const li = document.createElement('li');
+  li.className = side === 'sign' ? 'from-sign' : 'from-speak';
+  const when = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  li.innerHTML = `<span>${side === 'sign' ? 'SIGNED' : 'SPOKEN'} · ${when}${detail ? ' · ' + detail : ''}</span>${text}`;
+  $('#chat').append(li);
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+}
+
+/** The signer's turn: letters become a sentence, and it is spoken aloud. */
+async function convSend() {
+  const raw = app.letters.trim();
+  if (!raw) return toast('nothing signed yet');
+  setTurn('sign');
+  const grammar = holistic.asPrompt(nmm);
+  const res = await repair(raw, grammar ? { context: grammar } : {});
+  const text = res.text || fallback(raw);
+  addChat('sign', text, res.ok ? (res.model || 'ai') : 'local');
+  predictor.learn(text);
+  voice.speak(text, { force: true });
+  fetch('/api/vectors/remember', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, raw, session: SESSION })
+  }).catch(() => {});
+  app.letters = '';
+  paintRaw(); paintConverse(); paintSuggestions(); stab.reset();
+}
+
+/** The hearing person's turn: what they said is fingerspelled back. */
+function convReply(text) {
+  if (!text?.trim()) return;
+  initConverse();
+  setTurn('speak');
+  addChat('speak', text);
+  predictor.learn(text);
+  const clean = text.toUpperCase().replace(/[^A-Z ]/g, '');
+  convSpeller.load(clean);
+  $('#convStrip').innerHTML = [...clean].map(c => `<b>${c === ' ' ? '·' : c}</b>`).join('');
+  convSpeller.play();
+  $('#heard').textContent = text;
+  $('#heard').classList.remove('is-live');
 }
 
 /* =================================================== CALIBRATE === */
@@ -515,6 +631,12 @@ function setMode(mode) {
 
   if (mode === 'spell') initSpell();
   if (mode === 'reference') { if (abcBuilt === 'paused') { abcBuilt = false; } buildAbc(); }
+  if (mode === 'converse') {
+    initConverse();
+    handOverCamera('#video4', '#feedState4');
+    paintConverse();
+    paintSuggestions();
+  }
   if (mode === 'calibrate') {
     buildCalGrid();
     loadCalCounts();
@@ -570,6 +692,55 @@ function wire() {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url; a.download = `mercury-transcript-${Date.now()}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  /* suggestions — click, or press the number shown on the chip */
+  document.addEventListener('click', e => {
+    const chip = e.target.closest?.('.sugg__chip');
+    if (chip) acceptSuggestion(chip.dataset.word);
+  });
+
+  /* converse */
+  $('#btnStart4').addEventListener('click', () => startCam($('#video4')));
+  $('#btnConvSend').addEventListener('click', convSend);
+  $('#btnConvClear').addEventListener('click', () => {
+    app.letters = ''; paintRaw(); paintConverse(); paintSuggestions(); stab.reset();
+  });
+  $('#btnConvReplay').addEventListener('click', () => {
+    if (!convSpeller?.queue.length) return toast('nothing to replay');
+    convSpeller.seek(0); convSpeller.play();
+  });
+  $('#convType').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    convReply(e.target.value);
+    e.target.value = '';
+  });
+
+  convEars = new Ears({
+    onText: ({ final, interim }) => {
+      const el = $('#heard');
+      if (interim) { el.textContent = interim; el.classList.add('is-live'); }
+      if (final) convReply(final);
+    },
+    onState: st => {
+      const live = st === 'listening';
+      $('#btnConvListen').textContent = live ? '\u25a0 STOP' : '\ud83c\udfa4 LISTEN';
+      $('#turnSpeak').classList.toggle('is-live', live);
+      if (st === 'error') toast('speech recognition failed');
+    }
+  });
+  $('#btnConvListen').addEventListener('click', () => {
+    if (!convEars.supported) return toast('this browser has no speech recognition');
+    convEars.toggle();
+  });
+  $('#btnConvSave').addEventListener('click', () => {
+    const text = [...$('#chat').children]
+      .map(li => `${li.firstChild.textContent}\n${li.lastChild.textContent}`).join('\n\n');
+    if (!text.trim()) return toast('the conversation is empty');
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `mercury-conversation-${Date.now()}.txt`; a.click();
     URL.revokeObjectURL(url);
   });
 
@@ -677,8 +848,14 @@ function wire() {
     if (e.key === ' ') { e.preventDefault(); app.letters += ' '; paintRaw(); }
     if (e.key === 'Backspace') { e.preventDefault(); app.letters = app.letters.slice(0, -1); paintRaw(); }
     if (e.key === 'Enter') { e.preventDefault(); buildSentence(); }
-    if (e.key >= '1' && e.key <= '6') {
-      setMode(['interpret', 'spell', 'practice', 'calibrate', 'recall', 'reference'][+e.key - 1]);
+    // a digit takes the matching completion when one is offered,
+    // and otherwise switches mode
+    if (e.key >= '1' && e.key <= '9') {
+      const chips = $$('.panel.is-on .sugg__chip');
+      const pick = chips[+e.key - 1];
+      if (pick) { e.preventDefault(); acceptSuggestion(pick.dataset.word); return; }
+      const modes = ['interpret','converse','spell','practice','calibrate','recall','reference'];
+      if (+e.key <= modes.length) setMode(modes[+e.key - 1]);
     }
   });
 }
@@ -746,6 +923,7 @@ function boot() {
 
   paintRaw();
   paintReading(null, 0, false);
+  paintSuggestions();
   wire();
   checkLlm();
   checkVectors();
@@ -781,5 +959,6 @@ document.readyState === 'loading'
    tested without a pair of hands in front of a camera. */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) {
   window.__mercury = { app, cfg, stab, tracker, voice, onFrame, buildSentence, setMode,
-                      ensemble, holistic, SESSION };
+                      ensemble, holistic, predictor, SESSION,
+                      convSend, convReply, acceptSuggestion, paintSuggestions };
 }

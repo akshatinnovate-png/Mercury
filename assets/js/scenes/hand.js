@@ -152,8 +152,8 @@ export function sceneHand() {
 
     /* ---- palm wash: a soft field so the rig sits in space ---- */
     const cxp = P[9], g = ctx.createRadialGradient(cxp.x, cxp.y, 0, cxp.x, cxp.y, fov * 0.42);
-    g.addColorStop(0, 'rgba(255,107,26,.10)');
-    g.addColorStop(1, 'rgba(255,107,26,0)');
+    g.addColorStop(0, 'rgba(226,233,245,.10)');
+    g.addColorStop(1, 'rgba(226,233,245,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
 
     /* ---- palm: the knuckle line extruded to a wrist with real width.
@@ -203,9 +203,9 @@ export function sceneHand() {
       const r = lerp(2.2, 5.4, depth) * (TIPS.has(i) ? 1.25 : 1);
       if (TIPS.has(i)) {
         const pulse = 0.5 + Math.sin(t * 3 + i) * 0.5;
-        ctx.fillStyle = `rgba(255,107,26,${0.22 + pulse * 0.2})`;
+        ctx.fillStyle = `rgba(226,233,245,${0.22 + pulse * 0.2})`;
         ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.6, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#ff6b1a';
+        ctx.fillStyle = '#e8edf6';
       } else {
         ctx.fillStyle = `rgba(10,10,11,${0.4 + depth * 0.6})`;
       }
@@ -232,9 +232,9 @@ export function sceneHand() {
     /* ---- scan line sweeping the rig ---- */
     const sy = y0 + ((t * 0.28) % 1) * (y1 - y0);
     const sg = ctx.createLinearGradient(x0, sy - 18, x0, sy + 18);
-    sg.addColorStop(0, 'rgba(77,232,255,0)');
-    sg.addColorStop(.5, 'rgba(77,232,255,.5)');
-    sg.addColorStop(1, 'rgba(77,232,255,0)');
+    sg.addColorStop(0, 'rgba(159,180,208,0)');
+    sg.addColorStop(.5, 'rgba(159,180,208,.5)');
+    sg.addColorStop(1, 'rgba(159,180,208,0)');
     ctx.strokeStyle = sg; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x0, sy); ctx.lineTo(x1, sy); ctx.stroke();
 

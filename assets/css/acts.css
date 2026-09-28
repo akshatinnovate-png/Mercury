@@ -141,8 +141,8 @@
 .caret{width:2px;height:1.1em;background:var(--pulse);animation:blink .9s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
 .wave__grid{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(transparent 0 calc(100% - 1px),rgba(77,232,255,.07) 100%) 0 0/100% 62px,
-             linear-gradient(90deg,transparent 0 calc(100% - 1px),rgba(77,232,255,.07) 100%) 0 0/62px 100%;
+  background:linear-gradient(transparent 0 calc(100% - 1px),rgba(159,180,208,.07) 100%) 0 0/100% 62px,
+             linear-gradient(90deg,transparent 0 calc(100% - 1px),rgba(159,180,208,.07) 100%) 0 0/62px 100%;
   mask-image:radial-gradient(70% 60% at 50% 50%,#000,transparent)}
 
 /* ================= ACT VI — ASCENT ================= */

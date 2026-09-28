@@ -86,7 +86,7 @@ export function sceneDescent() {
     // low scud, lit warm from below
     drawClouds(B.ctx, B.w, B.h, deckC, t, {
       camZ: (p * 2.6) % 1,
-      tint: [255, 238, 222],
+      tint: [236, 240, 248],
       alpha: clamp((p - 0.72) / 0.12) * (1 - clamp((p - 0.95) / 0.05)) * 0.9,
       spread: 0.8
     });
@@ -147,7 +147,7 @@ export function sceneAscent() {
     const B = cloudBuffer(w, h, cloudScale(getFps()));
     drawClouds(B.ctx, B.w, B.h, deckB, t, {
       camZ: (1 - p * 2.0 % 1 + 1) % 1,
-      tint: [255, 244, 236],
+      tint: [238, 242, 249],
       alpha: (1 - clamp((p - 0.06) / 0.3)) * 0.95,
       spread: 0.9
     });
@@ -183,14 +183,14 @@ export function sceneAscent() {
         for (let j = i + 1; j < pts.length; j++) {
           const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
           if (d > R * 0.36) continue;
-          ctx.strokeStyle = `rgba(120,215,255,${(1 - d / (R * 0.36)) * 0.2 * netFade})`;
+          ctx.strokeStyle = `rgba(168,188,214,${(1 - d / (R * 0.36)) * 0.2 * netFade})`;
           ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
         }
       }
       for (const q of pts) {
         const pulse = 0.55 + Math.sin(t * 2 + q.z * 9) * 0.45;
-        ctx.fillStyle = `rgba(255,${(150 + q.z * 80) | 0},${(90 + q.z * 110) | 0},${(0.35 + pulse * 0.5) * netFade})`;
+        ctx.fillStyle = `rgba(${(214 + q.z * 40) | 0},${(224 + q.z * 28) | 0},${(240 + q.z * 15) | 0},${(0.35 + pulse * 0.5) * netFade})`;
         ctx.beginPath(); ctx.arc(q.x, q.y, 1.2 + q.z * 2.2, 0, TAU); ctx.fill();
       }
     }

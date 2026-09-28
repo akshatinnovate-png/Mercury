@@ -111,9 +111,9 @@ export class Speller {
     ctx.beginPath();
     palm.forEach((q, k) => k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
     ctx.closePath();
-    ctx.fillStyle = 'rgba(77,232,255,.10)';
+    ctx.fillStyle = 'rgba(159,180,208,.10)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(77,232,255,.30)';
+    ctx.strokeStyle = 'rgba(159,180,208,.30)';
     ctx.lineWidth = 1.4; ctx.stroke();
 
     /* digits */
@@ -136,9 +136,9 @@ export class Speller {
       const d = clamp((p.z + 1) / 2);
       const r = lerp(2.4, 5.2, d);
       if (TIPS.has(i)) {
-        ctx.fillStyle = 'rgba(255,107,26,.25)';
+        ctx.fillStyle = 'rgba(226,233,245,.25)';
         ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.4, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#ff6b1a';
+        ctx.fillStyle = '#e8edf6';
       } else {
         ctx.fillStyle = `rgba(255,255,255,${0.45 + d * 0.5})`;
       }

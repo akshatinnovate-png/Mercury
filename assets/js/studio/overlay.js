@@ -26,7 +26,7 @@ export function drawOverlay(ctx, w, h, hands, { mirror = true, dwell = 0, letter
         ctx.strokeStyle = 'rgba(255,255,255,.30)';
         ctx.lineWidth = 1.5;
       } else {
-        ctx.strokeStyle = 'rgba(77,232,255,.85)';
+        ctx.strokeStyle = 'rgba(159,180,208,.85)';
         ctx.lineWidth = 3.5;
       }
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
@@ -36,7 +36,7 @@ export function drawOverlay(ctx, w, h, hands, { mirror = true, dwell = 0, letter
     const TIPS = new Set([4, 8, 12, 16, 20]);
     P.forEach((p, i) => {
       const tip = TIPS.has(i);
-      ctx.fillStyle = tip ? '#ff6b1a' : 'rgba(255,255,255,.92)';
+      ctx.fillStyle = tip ? '#e8edf6' : 'rgba(255,255,255,.92)';
       ctx.beginPath(); ctx.arc(p.x, p.y, tip ? 5 : 3, 0, TAU); ctx.fill();
     });
 
@@ -63,7 +63,7 @@ export function drawOverlay(ctx, w, h, hands, { mirror = true, dwell = 0, letter
       ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 5; ctx.stroke();
       ctx.beginPath();
       ctx.arc(c.x, c.y + 42, R, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(dwell));
-      ctx.strokeStyle = '#ff6b1a'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.strokeStyle = '#e8edf6'; ctx.lineWidth = 5; ctx.stroke();
       ctx.font = '700 26px Archivo, system-ui, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#fff';

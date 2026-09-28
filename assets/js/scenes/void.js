@@ -4,9 +4,10 @@
    cities. Drawn every frame from maths; no textures, no sprites.
    ================================================================ */
 import {
-  fitCanvas, onTick, whenVisible, fibSphere, arc, rot, project,
+  fitCanvas, onTick, whenVisible, arc, rot, project,
   rng, clamp, lerp, ease, TAU
 } from '../core/gfx.js';
+import { Planet } from './planet.js';
 import { scrub } from '../core/scroll.js';
 import { makeStars, drawStars } from './atmos.js';
 
@@ -26,9 +27,11 @@ export function sceneVoid() {
   const cv = document.getElementById('cvVoid');
   if (!cv) return;
 
-  const shell   = fibSphere(5200);         // the planet surface
+  const planet  = new Planet();
+  planet.load().catch(() => { /* the arcs and stars still carry the scene */ });
   const rand    = rng(7);
-  const stars   = makeStars(760, 7);   // three parallax bands
+  // fewer stars than before: the planet is the subject, not the field
+  const stars   = makeStars(300, 7);
   const hubs    = HUBS.map(([n, la, lo]) => ({ name: n, v: toVec(la, lo) }));
   const routes  = [];
   for (let i = 0; i < hubs.length; i++) {
@@ -56,7 +59,7 @@ export function sceneVoid() {
     const ry    = t * 0.055 + prog * 1.25;        // slow spin + scrub
     const rx    = lerp(-0.22, 0.12, e);
     const fov   = Math.min(w, h) * 1.35;
-    const cx    = lerp(w * 0.74, w * 0.5, e);     // slide toward centre
+    const cx    = lerp(w * 0.80, w * 0.54, e);    // slide toward centre
     const fade  = 1 - clamp((prog - 0.72) / 0.28); // hand off to the descent
 
     ctx.save();
@@ -66,41 +69,12 @@ export function sceneVoid() {
     /* ---- starfield: near bands drift hardest, which reads as depth ---- */
     drawStars(ctx, w, h, stars, t, { scroll: prog * 0.5, alpha: fade });
 
-    /* ---- limb light: a tight corona hugging the edge, not a wash ---- */
-    const R = fov / camZ;
-    const g = ctx.createRadialGradient(w / 2, h / 2, R * 0.94, w / 2, h / 2, R * 1.16);
-    g.addColorStop(0, 'rgba(255,107,26,0)');
-    g.addColorStop(0.32, 'rgba(255,124,40,.42)');
-    g.addColorStop(1, 'rgba(255,107,26,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(w / 2, h / 2, R * 1.16, 0, TAU); ctx.fill();
-
-    /* shadowed body, so the point cloud has something to sit against */
-    ctx.fillStyle = 'rgba(3,5,11,.92)';
-    ctx.beginPath(); ctx.arc(w / 2, h / 2, R * 0.985, 0, TAU); ctx.fill();
-
-    /* ---- the planet: depth-sorted points, lit from upper-right ---- */
-    const light = { x: 0.72, y: -0.5, z: 0.48 };
-    const pts = [];
-    for (const p0 of shell) {
-      const p = rot(p0, ry, rx);
-      if (p.z < -0.92) continue;                       // cheap backface cull
-      const pr = project(p, w, h, fov, camZ);
-      const lit = clamp(p0.x * light.x + p0.y * light.y + p0.z * light.z);
-      pts.push({ ...pr, lit });
-    }
-    pts.sort((a, b) => b.z - a.z);
-    for (const p of pts) {
-      const depth = clamp((p.z + 1) / 2);
-      const a = (0.06 + Math.pow(p.lit, 1.35) * 1.0) * (0.45 + depth * 0.55) * fade;
-      // sunlit side runs amber, the dark side keeps a cold rim
-      const c = p.lit > 0.5
-        ? `rgba(255,${Math.round(140 + p.lit * 90)},${Math.round(70 + p.lit * 90)},${a})`
-        : `rgba(70,100,175,${a * 0.5})`;
-      ctx.fillStyle = c;
-      const r = Math.max(0.6, p.s * fov * 0.0050);
-      ctx.fillRect(p.x, p.y, r, r);
-    }
+    /* ---- the planet itself ---- */
+    const R = fov / camZ * 0.66;
+    // Mercury turns once every 59 days. This is faster than that and still
+    // slow enough that it reads as a body in motion rather than a spin.
+    const spin = t * 0.021 + prog * 0.55;
+    planet.draw(ctx, w / 2, h * 0.5, R, spin, { glow: 1, alpha: fade });
 
     /* ---- corridors: signal travelling between sign languages ---- */
     routes.forEach((rt, i) => {
@@ -108,7 +82,7 @@ export function sceneVoid() {
       // trail
       ctx.beginPath();
       proj.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-      ctx.strokeStyle = `rgba(255,107,26,${0.16 * fade})`;
+      ctx.strokeStyle = `rgba(176,188,208,${0.13 * fade})`;
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -119,11 +93,11 @@ export function sceneVoid() {
       if (seg.length > 1) {
         ctx.beginPath();
         seg.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-        ctx.strokeStyle = `rgba(255,150,60,${0.85 * fade})`;
+        ctx.strokeStyle = `rgba(232,238,248,${0.8 * fade})`;
         ctx.lineWidth = 1.6;
         ctx.stroke();
         const tip = seg[seg.length - 1];
-        ctx.fillStyle = `rgba(255,200,130,${fade})`;
+        ctx.fillStyle = `rgba(255,255,255,${fade})`;
         ctx.beginPath(); ctx.arc(tip.x, tip.y, 2, 0, TAU); ctx.fill();
       }
     });
@@ -136,9 +110,9 @@ export function sceneVoid() {
       if (p3.z < 0.12) continue;
       const p = project(p3, w, h, fov, camZ);
       const a = clamp((p3.z - 0.12) / 0.4) * fade;
-      ctx.fillStyle = `rgba(77,232,255,${a})`;
+      ctx.fillStyle = `rgba(226,233,245,${a})`;
       ctx.fillRect(p.x - 1.6, p.y - 1.6, 3.2, 3.2);
-      ctx.strokeStyle = `rgba(77,232,255,${a * 0.42})`;
+      ctx.strokeStyle = `rgba(200,212,232,${a * 0.38})`;
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 16, p.y - 12); ctx.stroke();
       ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;

@@ -18,14 +18,20 @@
   --ink-2:#8e9199;
 
   /* --- climate: plasma (the lab) --- */
-  --plasma:#f77fa8;
-  --plasma-deep:#2a1a20;
+  /* The lab reads as an instrument panel: dark graphite ground, silver
+     chrome. Inverted from the original pink, and the same metal as the
+     rest of the site. */
+  --plasma:#12151b;
+  --plasma-deep:#dde3ed;
 
-  /* --- signal accents --- */
-  --signal:#ff6b1a;      /* molten amber — the planet closest to the sun */
-  --signal-dim:#a8410c;
-  --pulse:#4de8ff;       /* electric cyan — data in flight */
-  --pulse-dim:#1a7a8c;
+  /* --- signal accents ---
+     Mercury is quicksilver: the accent is polished metal, not a colour.
+     Hierarchy comes from brightness and temperature rather than hue, which
+     is what keeps a near-monochrome palette from going flat. */
+  --signal:#e8edf6;      /* polished silver — the live, the now */
+  --signal-dim:#8d97a8;
+  --pulse:#9fb4d0;       /* cool steel — data in flight */
+  --pulse-dim:#5a6a80;
   --quicksilver:#c8ccd6;
 
   /* --- semantic --- */

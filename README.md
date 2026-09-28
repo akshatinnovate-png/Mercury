@@ -18,7 +18,7 @@ away — it travels, the way a message travels:
 
 | Act | Scene | What happens |
 |-----|-------|--------------|
-| I | **The Void** | A point-cloud Mercury turns in space, sign-language corridors arcing between hubs. |
+| I | **The Void** | Mercury itself, turning. A real photograph, unwrapped and lit fresh, so the planet rotates rather than the picture spinning. |
 | II | **Descent** | The camera falls through the atmosphere; black → violet → daylight. |
 | III | **The Hand** | A 21-landmark rig, solved live, scrubs through `M-E-R-C-U-R-Y` as you scroll. |
 | IV | **The Pipeline** | The view flips top-down; a packet runs the signal trace through seven stages. |
@@ -30,6 +30,10 @@ away — it travels, the way a message travels:
 ## The studio
 
 `studio.html` is the working part. Four modes:
+
+**Converse** — the whole point. One camera, one microphone, two people. The
+signer is heard; the speaker is seen. Signs become speech on the left, speech
+becomes fingerspelling on the right, and both sides land in one transcript.
 
 **Calibrate** — teach Mercury *your* hands. Record samples of each letter;
 they go into Qdrant and personalise recognition from then on.
@@ -185,6 +189,18 @@ neural embedder — deliberately, so search works on a clean clone with no
 model download. It captures lexical overlap, which is what makes "find
 where I mentioned the pharmacy" work. It does not capture paraphrase.
 
+### Predictive fingerspelling
+
+Spelling letter by letter is slow, so Mercury offers completions after two or
+three letters, ranked from three sources: words **you** have spelled before
+(kept on device, and trusted first), a frequency-ordered core of common
+English, and the language model for anything longer. Press the number on the
+chip to take it.
+
+Sign `P-H-A` after you have used the word once and `PHARMACY` is already
+waiting. The vocabulary is personal, so a name sign surfaces after two letters
+and nobody else's words get in the way.
+
 ### Sentence repair
 
 Fingerspelling arrives as a run of letters with no spaces and the occasional
@@ -225,12 +241,21 @@ into this repository and loaded from disk. **No video frame ever leaves the
 machine** — the only thing that can go out is the line of recognised letters,
 and only when a Groq key is configured.
 
-## No stock imagery
+## Drawn, not loaded
 
-Every pixel on this site is drawn at runtime — the planet, the hand, the road,
-the ocean, the clouds, the dithering, the cellular automaton. There is not a
-single `.jpg` or `.png` in this repository, and nothing is a video loop.
-Resize the window and it redraws; it is never a picture of an animation.
+Everything on the site is rendered at runtime — the hand, the road, the ocean,
+the clouds, the dithering, the cellular automaton. Nothing is a video loop, and
+resizing redraws rather than rescaling.
+
+The one image is the planet, and it is not used as an image. `tools/build_texture.py`
+takes a photograph of Mercury's lit hemisphere and unwraps it to an
+equirectangular map, dividing out the illumination so the baked-in shadow does
+not travel with the terrain. The globe is then lit fresh every frame by a fixed
+sun, which is the difference between a planet turning and a picture spinning.
+
+The projection never changes — only the longitude does — so every per-pixel
+term is solved once into a lookup table. After that a frame costs one array
+read per pixel, which is how a full sphere runs at 60fps without WebGL.
 
 ## Running it
 
@@ -273,11 +298,12 @@ assets/
   css/      tokens · base · chrome · acts · lab · fonts
   js/
     core/   gfx (3D + ticker) · boot · cursor · scroll · hud
-    scenes/ void · descent · hand · pipeline · voice · lab · atmos
+    scenes/ void · planet · descent · hand · pipeline · voice · lab · atmos
     studio/ rig · alphabet · asl · encode · neural · ensemble
-            holistic · camera · overlay · speller · speech · llm
+            holistic · predict · camera · overlay · speller · speech · llm
     ui/     reveal
   models/   hand · face · pose landmarkers · handshape.onnx
+  textures/ mercury-map.png
   vendor/   GSAP, Lenis, MediaPipe tasks-vision, ONNX Runtime Web
 server/
   app.py      static files, Groq proxy, vector endpoints
@@ -285,6 +311,7 @@ server/
 tools/
   train_handshape.py     the model, in numpy
   generate_dataset.mjs   synthetic hands, via the live encoder
+  build_texture.py       photograph -> planet texture
   fonts/    Archivo Variable, JetBrains Mono
   vendor/   GSAP, ScrollTrigger, Lenis
 server/app.py

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/studio.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23FF6B1A' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='%234DE8FF'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23E8EDF6' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='%239FB4D0'/></svg>">
 </head>
 <body class="studio">
 
@@ -22,11 +22,12 @@
 
   <nav class="modes" role="tablist" aria-label="Mode">
     <button role="tab" class="mode is-on" data-mode="interpret" aria-selected="true"><i>01</i>Interpret</button>
-    <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>02</i>Spell</button>
-    <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>03</i>Practice</button>
-    <button role="tab" class="mode" data-mode="calibrate" aria-selected="false"><i>04</i>Calibrate</button>
-    <button role="tab" class="mode" data-mode="recall" aria-selected="false"><i>05</i>Recall</button>
-    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>06</i>Alphabet</button>
+    <button role="tab" class="mode" data-mode="converse" aria-selected="false"><i>02</i>Converse</button>
+    <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>03</i>Spell</button>
+    <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>04</i>Practice</button>
+    <button role="tab" class="mode" data-mode="calibrate" aria-selected="false"><i>05</i>Calibrate</button>
+    <button role="tab" class="mode" data-mode="recall" aria-selected="false"><i>06</i>Recall</button>
+    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>07</i>Alphabet</button>
   </nav>
 
   <div class="sbar__end">
@@ -96,6 +97,7 @@
       <div class="read__out">
         <p class="mono-label">LETTERS <button class="mini" id="btnClear" title="Clear (Esc)">clear</button></p>
         <p class="raw" id="rawOut"><span class="raw__empty">nothing yet</span></p>
+        <div class="sugg" id="sugg"></div>
       </div>
 
       <div class="read__sentence">
@@ -115,6 +117,59 @@
         <ul class="log" id="log"></ul>
       </div>
     </aside>
+  </section>
+
+  <!-- ========================= CONVERSE ========================= -->
+  <section class="panel panel--wide" data-panel="converse">
+    <div class="conv">
+
+      <div class="conv__side conv__side--sign">
+        <div class="conv__head">
+          <span class="turn" id="turnSign"><i class="dot"></i>SIGNING</span>
+          <p class="mono-label">THEY SIGN &middot; MERCURY SPEAKS</p>
+        </div>
+        <div class="feed feed--conv">
+          <video id="video4" playsinline muted autoplay></video>
+          <canvas id="overlay4"></canvas>
+          <div class="feed__state" id="feedState4">
+            <div class="feed__inner">
+              <h2>A conversation, both ways</h2>
+              <p>One camera, one microphone. The signer is heard; the speaker is seen.</p>
+              <button class="btn btn--go" id="btnStart4">START CAMERA</button>
+            </div>
+          </div>
+          <div class="conv__live"><b id="convLetter">&mdash;</b><span id="convRaw"></span></div>
+        </div>
+        <div class="sugg sugg--conv" id="convSugg"></div>
+        <div class="row">
+          <button class="btn" id="btnConvSend">SAY IT</button>
+          <button class="btn btn--ghost" id="btnConvClear">CLEAR</button>
+        </div>
+      </div>
+
+      <div class="conv__log">
+        <p class="mono-label">CONVERSATION <button class="mini" id="btnConvSave">save</button></p>
+        <ul class="chat" id="chat"></ul>
+      </div>
+
+      <div class="conv__side conv__side--speak">
+        <div class="conv__head">
+          <span class="turn" id="turnSpeak">LISTENING</span>
+          <p class="mono-label">THEY SPEAK &middot; MERCURY SIGNS</p>
+        </div>
+        <div class="spell__stage spell__stage--conv">
+          <canvas id="convCanvas"></canvas>
+          <div class="spell__strip" id="convStrip"></div>
+        </div>
+        <p class="heard" id="heard">press listen, or type below</p>
+        <input type="text" id="convType" placeholder="or type a reply&hellip;" autocomplete="off">
+        <div class="row">
+          <button class="btn btn--go" id="btnConvListen">&#127908; LISTEN</button>
+          <button class="btn btn--ghost" id="btnConvReplay">REPLAY</button>
+        </div>
+      </div>
+
+    </div>
   </section>
 
   <!-- ========================= SPELL ========================= -->

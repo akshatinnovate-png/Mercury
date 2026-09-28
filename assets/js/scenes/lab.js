@@ -44,7 +44,7 @@ function life() {
     acc = 0;
     step();
     ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.fillStyle = '#2a1a20';
+    ctx.fillStyle = '#dde3ed';
     for (let i = 0; i < grid.length; i++) {
       if (!grid[i]) continue;
       ctx.fillRect((i % N) * cell, ((i / N) | 0) * cell, cell, cell);

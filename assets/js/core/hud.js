@@ -41,7 +41,7 @@ export function instruments() {
 
   // Acts are several viewports tall, so an intersection *ratio* can never
   // reach 50%. Track the act crossing the middle of the screen instead.
-  const PAPER = new Set(['act-hand', 'act-pipeline', 'act-lab']);
+  const PAPER = new Set(['act-hand', 'act-pipeline']);
 
   document.querySelectorAll('.act').forEach(el => {
     const enter = () => {

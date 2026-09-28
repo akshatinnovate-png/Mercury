@@ -109,7 +109,7 @@ export function scenePipeline() {
     ctx.beginPath();
     const upto = Math.max(2, Math.floor(head * (PATH.length - 1)) + 1);
     PATH.slice(0, upto).forEach((p, i) => { const [x, y] = px(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.strokeStyle = 'rgba(255,107,26,.85)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(226,233,245,.85)'; ctx.lineWidth = 2.5; ctx.stroke();
 
     // dashed centre line, scrolling
     ctx.beginPath();
@@ -129,14 +129,14 @@ export function scenePipeline() {
 
       ctx.save();
       ctx.translate(x, y); ctx.rotate(pt.ang + Math.PI / 2);
-      ctx.strokeStyle = on ? '#ff6b1a' : 'rgba(247,247,244,.45)';
+      ctx.strokeStyle = on ? '#e8edf6' : 'rgba(247,247,244,.45)';
       ctx.lineWidth = on ? 3 : 1.5;
       ctx.beginPath();
       ctx.moveTo(-road/2, 0); ctx.lineTo(road/2, 0);
       ctx.stroke();
       ctx.restore();
 
-      ctx.fillStyle = on ? '#ff6b1a' : 'rgba(10,10,11,.42)';
+      ctx.fillStyle = on ? '#e8edf6' : 'rgba(10,10,11,.42)';
       ctx.fillText(`${id} ${name}`, x + road * 0.62, y);
     });
 
@@ -146,15 +146,15 @@ export function scenePipeline() {
     ctx.translate(hx, hy); ctx.rotate(me.ang + Math.PI / 2);
     // wake
     const wg = ctx.createLinearGradient(0, 0, 0, road * 1.9);
-    wg.addColorStop(0, 'rgba(77,232,255,.55)');
-    wg.addColorStop(1, 'rgba(77,232,255,0)');
+    wg.addColorStop(0, 'rgba(159,180,208,.55)');
+    wg.addColorStop(1, 'rgba(159,180,208,0)');
     ctx.fillStyle = wg;
     ctx.fillRect(-road * 0.10, 0, road * 0.20, road * 1.9);
     // body
     const bw = road * 0.30, bh = road * 0.62;
     ctx.fillStyle = '#f7f7f4';
     ctx.fillRect(-bw/2, -bh/2, bw, bh);
-    ctx.fillStyle = '#ff6b1a';
+    ctx.fillStyle = '#e8edf6';
     ctx.fillRect(-bw/2, -bh/2, bw, bh * 0.22);
     ctx.strokeStyle = '#0a0a0b'; ctx.lineWidth = 1.5;
     ctx.strokeRect(-bw/2, -bh/2, bw, bh);
@@ -162,8 +162,8 @@ export function scenePipeline() {
 
     // halo
     const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, road * 1.5);
-    hg.addColorStop(0, 'rgba(255,107,26,.24)');
-    hg.addColorStop(1, 'rgba(255,107,26,0)');
+    hg.addColorStop(0, 'rgba(226,233,245,.24)');
+    hg.addColorStop(1, 'rgba(226,233,245,0)');
     ctx.fillStyle = hg;
     ctx.beginPath(); ctx.arc(hx, hy, road * 1.5, 0, TAU); ctx.fill();
 

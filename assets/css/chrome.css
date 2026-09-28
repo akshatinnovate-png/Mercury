@@ -8,7 +8,7 @@
   display:grid;place-items:center;transition:opacity .6s var(--ease)}
 .boot.is-done{pointer-events:none}
 .boot__dither{position:absolute;inset:0;opacity:.5;
-  background-image:radial-gradient(rgba(255,107,26,.5) 1px,transparent 1px);
+  background-image:radial-gradient(rgba(232,237,246,.45) 1px,transparent 1px);
   background-size:4px 4px;mask-image:linear-gradient(180deg,#000,transparent 70%)}
 .boot__win{position:relative;width:min(92vw,420px);border:1px solid var(--quicksilver);
   background:#0a0d16;box-shadow:0 0 0 1px #000,8px 8px 0 rgba(0,0,0,.6)}
