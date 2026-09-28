@@ -6,6 +6,7 @@ No model is attached yet: this build is the interface only, and every
 route below answers with the shape the real thing will answer with.
 
     python server/app.py            # http://127.0.0.1:8000
+    python server/app.py 5500       # pick another port if 8000 is taken
 """
 
 from __future__ import annotations
@@ -93,9 +94,18 @@ class Mercury(SimpleHTTPRequestHandler):
 
 def main() -> None:
     mimetypes.add_type("text/javascript", ".js")
-    print(f"\n  MERCURY — interface build\n  http://{HOST}:{PORT}\n")
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
     try:
-        HTTPServer((HOST, PORT), Mercury).serve_forever()
+        server = HTTPServer((HOST, port), Mercury)
+    except OSError as exc:
+        # Port 8000 is a popular default; say so plainly instead of a traceback.
+        print(f"\n  Port {port} is not free ({exc.strerror}).")
+        print(f"  Try another one:  python server/app.py {port + 1}\n")
+        raise SystemExit(1)
+
+    print(f"\n  MERCURY — interface build\n  http://{HOST}:{port}\n")
+    try:
+        server.serve_forever()
     except KeyboardInterrupt:
         print("\n  stopped\n")
 

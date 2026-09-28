@@ -50,8 +50,17 @@ Resize the window and it redraws; it is never a picture of an animation.
 ## Running it
 
 ```bash
-python3 server/app.py     # http://127.0.0.1:8000
+git clone https://github.com/akshatinnovate-png/Mercury.git
+cd Mercury
+python3 server/app.py          # then open http://127.0.0.1:8000
 ```
+
+On Windows use `python` instead of `python3`. If port 8000 is already taken,
+pass another: `python3 server/app.py 5500`.
+
+**Opening `index.html` by double-clicking will not work.** The site uses ES
+modules, which every browser blocks over `file://`. It has to be served over
+HTTP — that is all the command above does.
 
 No build step, no `npm install`, no network. GSAP, Lenis and both typefaces are
 vendored into `assets/`, so it renders identically on a judging machine with the
