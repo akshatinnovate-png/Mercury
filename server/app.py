@@ -20,6 +20,9 @@ import urllib.request
 from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vectors  # noqa: E402  (path must be set first)
+
 ROOT = Path(__file__).resolve().parent.parent
 HOST, PORT = "127.0.0.1", 8000
 
@@ -74,6 +77,12 @@ class Mercury(SimpleHTTPRequestHandler):
 
     # ---- routing -------------------------------------------------
     def do_GET(self):  # noqa: N802  (stdlib naming)
+        route = self.path.split("?")[0]
+        if route == "/api/vectors/summary":
+            return self._json(vectors.calibration_summary())
+        if route == "/api/vectors/status":
+            return self._json(vectors.status())
+
         routes = {
             "/api/health": lambda: {
                 "status": "ok",
@@ -81,6 +90,7 @@ class Mercury(SimpleHTTPRequestHandler):
                     "configured": bool(GROQ_KEY),
                     "model": GROQ_MODEL if GROQ_KEY else None,
                 },
+                "vectors": vectors.status(),
             },
             "/api/topology": lambda: {"landmarks": LANDMARKS, "bones": 20},
             "/api/pipeline": lambda: {"stages": PIPELINE},
@@ -94,16 +104,59 @@ class Mercury(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0]
         if route == "/api/llm":
             return self._llm()
+        if route.startswith("/api/vectors/"):
+            return self._vectors(route.rsplit("/", 1)[-1])
         self.send_error(404)
+
+    # ---- vector store ---------------------------------------------
+    def _vectors(self, action: str) -> None:
+        body = self._body()
+        if body is None:
+            return self._json({"ok": False, "reason": "bad request body"}, 400)
+
+        session = str(body.get("session", "default"))[:64]
+
+        if action == "calibrate":
+            letter = str(body.get("letter", ""))[:2].upper()
+            samples = body.get("vectors") or []
+            if not letter or not isinstance(samples, list):
+                return self._json({"ok": False, "reason": "letter and vectors required"}, 400)
+            return self._json(vectors.add_calibration(letter, samples[:64], session))
+
+        if action == "match":
+            vec = body.get("vector") or []
+            k = min(int(body.get("k", 9)), 32)
+            return self._json(vectors.query_calibration(vec, k, session))
+
+        if action == "remember":
+            return self._json(vectors.add_transcript(
+                str(body.get("text", ""))[:2000],
+                str(body.get("raw", ""))[:2000],
+                session))
+
+        if action == "search":
+            return self._json(vectors.search_transcript(
+                str(body.get("query", ""))[:400],
+                min(int(body.get("k", 8)), 25)))
+
+        if action == "reset":
+            return self._json(vectors.clear_calibration())
+
+        self.send_error(404)
+
+    def _body(self):
+        try:
+            size = int(self.headers.get("Content-Length") or 0)
+            return json.loads(self.rfile.read(size) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            return None
 
     # ---- language model ------------------------------------------
     def _llm(self) -> None:
         """Proxy a completion to Groq. Degrades to a clear 'off' rather than
         an error, so the studio keeps working with the model unavailable."""
-        try:
-            size = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(size) or b"{}")
-        except (ValueError, json.JSONDecodeError):
+        body = self._body()
+        if body is None:
             return self._json({"ok": False, "reason": "bad request body"}, 400)
 
         text = str(body.get("text", ""))[:4000].strip()
@@ -198,8 +251,10 @@ def main() -> None:
         print(f"  Try another one:  python server/app.py {port + 1}\n")
         raise SystemExit(1)
 
-    state = f"sentence repair: {GROQ_MODEL}" if GROQ_KEY else "sentence repair: off (set GROQ_API_KEY)"
-    print(f"\n  MERCURY\n  http://{HOST}:{port}\n  {state}\n")
+    llm_state = f"sentence repair  {GROQ_MODEL}" if GROQ_KEY else "sentence repair  off (set GROQ_API_KEY)"
+    vec = vectors.status()
+    vec_state = f"vector store     qdrant, {vec['mode']}" if vec["available"] else f"vector store     off ({vec['reason']})"
+    print(f"\n  MERCURY\n  http://{HOST}:{port}\n  {llm_state}\n  {vec_state}\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

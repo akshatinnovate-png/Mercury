@@ -30,8 +30,11 @@ export async function llmStatus() {
  * @param {string} text raw recognised letters
  * @returns {Promise<{ok:boolean, text:string, reason?:string, model?:string}>}
  */
-export async function repair(text, { system, signal } = {}) {
+export async function repair(text, { system, context, signal } = {}) {
   const key = localKey();
+  // non-manual grammar, when the face was readable, changes the reading:
+  // the same letters are a statement or a question depending on the brows
+  const payload = context ? `${text}\n\n[${context}]` : text;
   try {
     const res = await fetch('/api/llm', {
       method: 'POST',
@@ -39,7 +42,7 @@ export async function repair(text, { system, signal } = {}) {
         'Content-Type': 'application/json',
         ...(key ? { 'X-Mercury-Key': key } : {})
       },
-      body: JSON.stringify({ text, system }),
+      body: JSON.stringify({ text: payload, system }),
       signal
     });
     const data = await res.json().catch(() => ({}));

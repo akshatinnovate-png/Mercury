@@ -31,6 +31,11 @@ away — it travels, the way a message travels:
 
 `studio.html` is the working part. Four modes:
 
+**Calibrate** — teach Mercury *your* hands. Record samples of each letter;
+they go into Qdrant and personalise recognition from then on.
+
+**Recall** — search every sentence you have spoken, by meaning.
+
 **Interpret** — point a camera at your hands. Mercury tracks 21 landmarks per
 hand, recognises the letter, waits for you to hold it, and builds the
 sentence. Then it speaks it aloud.
@@ -42,6 +47,91 @@ speed you choose. The reverse direction, using the same handshape definitions.
 count, streak and accuracy, with a reference hand showing the shape it wants.
 
 **Alphabet** — all 26 letters as rotating 3D handshapes.
+
+### Architecture
+
+```
+browser                                   server
+─────────────────────────────────────     ────────────────────────────
+MediaPipe HandLandmarker   21 pts/hand
+MediaPipe FaceLandmarker   478 pts   ─┐
+MediaPipe PoseLandmarker   33 pts    ─┤ non-manual grammar
+                                      │
+canonical encoder          83 dims    │
+  ├─ geometric templates              │
+  ├─ MLP, 20,568 params  (ONNX/WASM)  │
+  └─ kNN over your own hands  ────────┼──▶ Qdrant  calibration
+                                      │            transcript
+weighted vote + agreement             │
+  ▼                                   │
+hold-to-commit stabiliser             │
+  ▼                                   │
+letters ─────────────────────────────┴──▶ Groq gpt-oss-120b
+                                              ▼
+                                          sentence ──▶ speech
+```
+
+### Three classifiers, not one
+
+Each is wrong in a different way, and their disagreement is itself a
+signal. The studio shows all three votes live.
+
+| | what it is | why it is there |
+|---|---|---|
+| **geometric** | distance to a reference signature | instant, needs nothing loaded, every decision explainable in a sentence |
+| **neural** | 20,568-parameter MLP over the canonical encoding | most accurate on hands like its training set, worst at knowing when it is out of its depth |
+| **personal** | kNN over your own recorded hands, in Qdrant | worth nothing until you calibrate; worth more than the other two once you have |
+
+Agreement across the three is reported as `unanimous` / `split` /
+`disputed` and feeds the confidence score, which is a more honest
+signal than any single model's self-reported certainty.
+
+### The model
+
+Trained from scratch, in numpy, no framework — `tools/train_handshape.py`
+is the whole thing, and the exported ONNX graph is exactly the arithmetic
+in that file.
+
+```
+67,200 synthetic hands · 24 classes · 83 dims
+MLP 83 → 128 → 64 → 24, ReLU, Adam, cosine decay
+validation (same generator)              99.97%
+held out (unseen seed, 1.7x distortion)  99.62%
+inference, warm                          0.125 ms
+```
+
+**What that number does not mean.** Training and validation are both
+synthetic — poses from the rig under heavy domain randomisation
+(rotation, proportion, tracker jitter). The model has never seen a
+photographed hand. The held-out score shows it generalises across
+distortions it never trained on; it says nothing about real lighting,
+real skin, real hands. That gap is exactly what the calibration store
+exists to close, and it is why the geometric classifier is kept in the
+ensemble rather than discarded.
+
+Two rounds of honest failure got it here. The first attempt scored 86.6%
+and confused J with I, Z with D. That was correct behaviour: those pairs
+have identical *still* shapes and differ only in motion, so they should
+never have been separate classes. The second scored 94.0% and still
+confused M with N and G with Q — because in my rig M and N had nearly
+identical thumbs, and because the canonical frame is rotation-invariant
+by construction, which erases the only difference between G and Q. Fixing
+the data and adding explicit orientation features took it to 99.6%.
+
+### Non-manual grammar
+
+ASL is not carried on the hands alone. Raised brows turn a statement into
+a yes/no question; furrowed brows mark a wh-question; a head tilt marks a
+conditional. Where a sign is made — forehead, chin, chest — changes what
+it means.
+
+Mercury tracks face and pose alongside the hands, learns the signer's
+neutral expression over the first second, and reports departures from it
+as labelled grammatical markers. Those markers are passed to the language
+model as context, so the same letters become a question or a statement
+depending on the face that signed them.
+
+This is a beginning, not the whole of non-manual grammar.
 
 ### How the recognition works
 
@@ -70,6 +160,30 @@ to the one you meant.
 
 J and Z are motion letters — their still shapes are I and D — so they are
 excluded from still matching and animated along their path in Spell mode.
+
+### The vector store
+
+Qdrant, running **embedded** by default — a local on-disk store, no
+container, no server, works from a clean clone. Set `QDRANT_URL` and the
+same code talks to a cluster instead.
+
+Two collections, both earning their place:
+
+**`calibration`** — your own hands, 83-dim encodings.
+The model has never seen a real hand; rather than pretend otherwise,
+Mercury lets you record your own version of each letter. Recognition
+then queries them by nearest neighbour, and the personal vote's weight
+grows with how many you have recorded. This matters most for signers
+with unusual hand proportions or limited mobility — the people a model
+trained on an average is worst at.
+
+**`transcript`** — everything spoken, embedded and searchable by meaning
+rather than scrolled.
+
+The text embedding is a hashed bag of words and character trigrams, not a
+neural embedder — deliberately, so search works on a clean clone with no
+model download. It captures lexical overlap, which is what makes "find
+where I mentioned the pharmacy" work. It does not capture paraphrase.
 
 ### Sentence repair
 
@@ -145,6 +259,11 @@ The server also stubs the endpoints the interpreter will use:
 | `GET /api/topology` | the 21 landmark names and bone count |
 | `GET /api/pipeline` | the seven stages |
 | `POST /api/llm` | sentence repair via Groq, or a clear reason why not |
+| `POST /api/vectors/calibrate` | store encodings of a letter as you sign it |
+| `POST /api/vectors/match` | nearest neighbours among your own hands |
+| `POST /api/vectors/remember` | keep a sentence for later recall |
+| `POST /api/vectors/search` | search everything said, by meaning |
+| `GET /api/vectors/summary` | calibration coverage |
 
 ## Layout
 
@@ -155,10 +274,17 @@ assets/
   js/
     core/   gfx (3D + ticker) · boot · cursor · scroll · hud
     scenes/ void · descent · hand · pipeline · voice · lab · atmos
-    studio/ rig · alphabet · asl · camera · overlay · speller · speech · llm
+    studio/ rig · alphabet · asl · encode · neural · ensemble
+            holistic · camera · overlay · speller · speech · llm
     ui/     reveal
-  models/   hand_landmarker.task
-  vendor/   GSAP, ScrollTrigger, Lenis, MediaPipe tasks-vision
+  models/   hand · face · pose landmarkers · handshape.onnx
+  vendor/   GSAP, Lenis, MediaPipe tasks-vision, ONNX Runtime Web
+server/
+  app.py      static files, Groq proxy, vector endpoints
+  vectors.py  Qdrant collections and the text embedding
+tools/
+  train_handshape.py     the model, in numpy
+  generate_dataset.mjs   synthetic hands, via the live encoder
   fonts/    Archivo Variable, JetBrains Mono
   vendor/   GSAP, ScrollTrigger, Lenis
 server/app.py
@@ -177,7 +303,12 @@ The custom cursor is removed entirely on touch devices.
 
 ## Tested
 
-- recogniser: 24/24 static letters on a rig round-trip
+- ensemble: 24/24 static letters, unanimous agreement
+- neural model: 99.62% on held-out synthetic hands at 1.7x distortion
+- inference: 0.125 ms warm
+- calibration: samples stored, personal weight rises 0 → 0.18, kNN votes correctly
+- recall: lexical search ranks the right sentence first
+- studio: clean at 1600 / 1280 / 820 / 390 px across all six modes
 - pipeline: landmarks → letters → sentence → transcript, driven by synthetic
   hands through the real UI
 - practice scoring, multi-word spelling with spaces
@@ -185,10 +316,14 @@ The custom cursor is removed entirely on touch devices.
 - landing page holds 38–60 fps on a software rasteriser with no GPU
 
 Not verifiable from here, and worth checking on your machine: detection
-accuracy on real hands in real lighting, and the live Groq call.
+accuracy on real hands in real lighting, the live Groq call
+(`api.groq.com` is blocked from the sandbox this was built in), and the
+non-manual markers, which need a real face.
 
 ## Known limits
 
+- **The accuracy figures are on synthetic hands.** Real-hand accuracy is
+  unmeasured. Calibrate before judging it.
 - Fingerspelling only. Full sign language is not the alphabet — it has its own
   grammar, and uses space, movement and face. The pipeline in Act IV is the
   architecture for that; this build implements the manual alphabet.

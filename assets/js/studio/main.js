@@ -8,7 +8,10 @@
    feature and leaves the rest working.
    ================================================================ */
 import { Tracker, STATE } from './camera.js';
-import { classify, Stabiliser, NOTES, TEMPLATES } from './asl.js';
+import { classify, Stabiliser, NOTES, TEMPLATES, MOTION_LETTERS } from './asl.js';
+import { Ensemble } from './ensemble.js';
+import { Holistic } from './holistic.js';
+import { encode } from './encode.js';
 import { drawOverlay } from './overlay.js';
 import { Speller } from './speller.js';
 import { Voice, Ears } from './speech.js';
@@ -40,6 +43,21 @@ const app = {
 
 const voice = new Voice();
 const stab = new Stabiliser({ dwell: cfg.dwell, minConfidence: cfg.minConf });
+
+/* A stable id for this machine, so calibration belongs to a person
+   rather than to a tab. */
+const SESSION = (() => {
+  let id = localStorage.getItem('mercury.session');
+  if (!id) { id = 'sess-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('mercury.session', id); }
+  return id;
+})();
+
+const ensemble = new Ensemble({ session: SESSION });
+const holistic = new Holistic();
+let nmm = null;                 // latest non-manual reading
+let holisticAt = 0;
+
+app.calibrate = { letter: null, recording: 0, target: 0, samples: [], counts: {} };
 
 /* ---------------------------------------------------------- toast */
 let toastTimer;
@@ -82,21 +100,30 @@ function paintState(s, detail, panelSel, titleSel, bodySel, hintSel) {
 
 let overlayCtx = null, overlayCanvas = null;
 
-function onFrame({ hands }, now) {
-  const inPractice = app.mode === 'practice';
-  const cv = inPractice ? $('#overlay2') : $('#overlay');
+async function onFrame({ hands }, now) {
+  const mode = app.mode;
+  const inPractice = mode === 'practice';
+  const inCalibrate = mode === 'calibrate';
+  const cv = inPractice ? $('#overlay2') : inCalibrate ? $('#overlay3') : $('#overlay');
   if (!cv) return;
   const { ctx, w, h } = fitCanvas(cv);
 
   $('#fpsVal').textContent = tracker.fps || '—';
   $('#handCount').textContent = `${hands.length} hand${hands.length === 1 ? '' : 's'}`;
 
+  /* Face and pose run slower than the hands: grammar changes at the
+     speed of a sentence, handshape at the speed of a finger. */
+  if (holistic.ready && tracker.video && now - holisticAt > 180) {
+    holisticAt = now;
+    const read = holistic.detect(tracker.video, now);
+    if (read) { nmm = read; paintNmm(read); }
+  }
+
   if (!hands.length) {
     drawOverlay(ctx, w, h, [], { mirror: tracker.mirror });
     stab.reset();
     paintReading(null, 0, inPractice);
-    // a pause with no hand in frame ends the sentence
-    if (!inPractice && cfg.auto && app.letters && now - app.lastCommitAt > 2200) {
+    if (!inPractice && !inCalibrate && cfg.auto && app.letters && now - app.lastCommitAt > 2200) {
       app.lastCommitAt = now;
       buildSentence();
     }
@@ -104,7 +131,10 @@ function onFrame({ hands }, now) {
   }
 
   const hand = hands[0];
-  const res = classify(hand.lm);
+  const res = await ensemble.predict(hand.lm, now);
+
+  if (inCalibrate) return onCalibrateFrame(hand, res, ctx, w, h, now);
+
   const { letter, progress, committed } = stab.push(res, now);
 
   drawOverlay(ctx, w, h, [hand], {
@@ -113,11 +143,41 @@ function onFrame({ hands }, now) {
   });
 
   paintReading(res, progress, inPractice);
+  paintSources(res);
 
   if (committed) {
     if (inPractice) scorePractice(committed);
-    else commitLetter(committed);
+    else commitLetter(committed, now);
   }
+}
+
+function paintSources(res) {
+  const map = [['#srcTemplate', res.sources.template], ['#srcNeural', res.sources.neural],
+               ['#srcPersonal', res.sources.personal]];
+  for (const [sel, src] of map) {
+    const el = $(sel);
+    if (!el) continue;
+    el.classList.toggle('is-off', !src);
+    el.classList.toggle('is-lead', !!src && src.letter === res.letter);
+    el.querySelector('b').textContent = src ? src.letter : '—';
+    el.querySelector('i').style.width = src
+      ? `${Math.round((src.confidence ?? 0.8) * 100)}%` : '0%';
+  }
+  const tag = $('#agreeTag');
+  if (tag) {
+    const a = res.agreement;
+    tag.textContent = a >= 0.99 ? 'unanimous' : a >= 0.5 ? 'split' : 'disputed';
+    tag.classList.toggle('is-ai', a >= 0.99);
+  }
+}
+
+function paintNmm(read) {
+  const box = $('#nmm');
+  if (!box) return;
+  if (!read.marker) { box.hidden = true; return; }
+  box.hidden = false;
+  $('#nmmMarker').textContent = read.marker.replace('-', ' ').toUpperCase();
+  $('#nmmMeaning').textContent = read.meaning;
 }
 
 function paintReading(res, progress, inPractice) {
@@ -171,7 +231,9 @@ async function buildSentence() {
   const btn = $('#btnRepair');
   btn.disabled = true; btn.textContent = 'THINKING…';
 
-  const res = await repair(raw);
+  // a raised brow changes a statement into a question; tell the model
+  const grammar = holistic.asPrompt(nmm);
+  const res = await repair(raw, grammar ? { system: null, context: grammar } : {});
   app.sentence = res.text || fallback(raw);
 
   const out = $('#sentence');
@@ -184,6 +246,11 @@ async function buildSentence() {
   if (app.sentence) {
     addLog(app.sentence, raw);
     voice.speak(app.sentence);
+    // keep it, so it can be searched by meaning later
+    fetch('/api/vectors/remember', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: app.sentence, raw, session: SESSION })
+    }).catch(() => {});
     // the utterance is finished, so the next one starts from an empty
     // buffer; without this every sentence repeats all the letters before it
     app.letters = '';
@@ -321,7 +388,122 @@ function buildAbc() {
   });
 }
 
+/* =================================================== CALIBRATE === */
+// J and Z are motion letters with no distinct still shape, so there is
+// nothing to calibrate for them.
+const CAL_LETTERS = Object.keys(TEMPLATES).filter(l => !(l in MOTION_LETTERS));
+
+function buildCalGrid() {
+  const g = $('#calGrid');
+  if (!g || g.children.length) return;
+  g.innerHTML = CAL_LETTERS.map(l => `<b data-l="${l}">${l}</b>`).join('');
+}
+
+function nextCalLetter(letter) {
+  const c = app.calibrate;
+  // walk to whichever letter has the fewest samples, so coverage evens out
+  c.letter = letter || CAL_LETTERS
+    .slice()
+    .sort((a, b) => (c.counts[a] || 0) - (c.counts[b] || 0))[0];
+  $('#calLetter').textContent = c.letter;
+  $('#calNote').textContent = NOTES[c.letter] || '';
+  drawPose($('#pracRef'), c.letter);
+  paintCalGrid();
+}
+
+function paintCalGrid() {
+  const c = app.calibrate;
+  [...($('#calGrid')?.children || [])].forEach(b => {
+    const n = c.counts[b.dataset.l] || 0;
+    b.className = '';
+    if (n >= 15) b.classList.add('has-3');
+    else if (n >= 8) b.classList.add('has-2');
+    else if (n > 0) b.classList.add('has-1');
+    if (b.dataset.l === c.letter) b.classList.add('is-now');
+  });
+  const total = Object.values(c.counts).reduce((a, b) => a + b, 0);
+  const done = Object.values(c.counts).filter(n => n >= 5).length;
+  $('#calTotal').textContent = total;
+  $('#calLetters').textContent = done;
+  $('#calWeight').textContent = `${Math.round(ensemble.weights.personal * 100)}%`;
+}
+
+function onCalibrateFrame(hand, res, ctx, w, h, now) {
+  const c = app.calibrate;
+  const active = c.recording > 0;
+  drawOverlay(ctx, w, h, [hand], {
+    mirror: tracker.mirror,
+    dwell: active ? 1 - c.recording / c.target : 0,
+    letter: c.letter || '', confidence: res.confidence
+  });
+  $('#calBar').style.width = active ? `${(1 - c.recording / c.target) * 100}%` : '0%';
+  if (!active) return;
+
+  // one sample every few frames, so five samples span a real movement
+  // rather than five copies of one instant
+  if (c.recording % 6 === 0) c.samples.push(Array.from(encode(hand.lm)));
+  c.recording--;
+
+  if (c.recording <= 0) {
+    const letter = c.letter, batch = c.samples.slice();
+    c.samples = [];
+    $('#calBar').style.width = '0%';
+    fetch('/api/vectors/calibrate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ letter, vectors: batch, session: SESSION })
+    }).then(r => r.json()).then(async r => {
+      if (!r.ok) return toast(`could not store: ${r.reason || 'error'}`);
+      c.counts[letter] = (c.counts[letter] || 0) + r.stored;
+      await ensemble.refreshCalibration();
+      toast(`${letter}: ${r.stored} samples stored`);
+      nextCalLetter();
+    }).catch(() => toast('vector store unreachable'));
+  }
+}
+
+async function loadCalCounts() {
+  try {
+    const r = await fetch('/api/vectors/summary').then(x => x.json());
+    app.calibrate.counts = r.letters || {};
+  } catch { app.calibrate.counts = {}; }
+  paintCalGrid();
+}
+
+/* ====================================================== RECALL === */
+async function runRecall() {
+  const q = $('#recallQuery').value.trim();
+  const list = $('#recallList');
+  if (!q) { list.innerHTML = ''; return; }
+  list.innerHTML = '<li><p>searching…</p></li>';
+  try {
+    const r = await fetch('/api/vectors/search', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q, k: 12 })
+    }).then(x => x.json());
+    const hits = (r.results || []).filter(h => h.score > 0.04);
+    if (!hits.length) { list.innerHTML = '<li><p>nothing matched that.</p></li>'; return; }
+    list.innerHTML = hits.map(h => {
+      const when = h.ts ? new Date(h.ts * 1000).toLocaleString() : '';
+      return `<li><p>${h.text}</p><span><b>${(h.score * 100).toFixed(0)}% match</b>${when}<em>${h.raw || ''}</em></span></li>`;
+    }).join('');
+  } catch {
+    list.innerHTML = '<li><p>the vector store is not reachable.</p></li>';
+  }
+}
+
 /* ======================================================== MODES == */
+/* One camera, several panels: move the existing stream rather than
+   asking for permission again each time the mode changes. */
+function handOverCamera(videoSel, stateSel) {
+  if (tracker.state !== STATE.READY) return;
+  const v = $(videoSel);
+  if (!v) return;
+  v.srcObject = tracker.stream;
+  v.play().catch(() => {});
+  tracker.video = v;
+  if (stateSel) { const s = $(stateSel); if (s) s.hidden = true; }
+}
+
 function setMode(mode) {
   app.mode = mode;
   $$('.mode').forEach(b => {
@@ -333,21 +515,18 @@ function setMode(mode) {
 
   if (mode === 'spell') initSpell();
   if (mode === 'reference') { if (abcBuilt === 'paused') { abcBuilt = false; } buildAbc(); }
+  if (mode === 'calibrate') {
+    buildCalGrid();
+    loadCalCounts();
+    if (!app.calibrate.letter) nextCalLetter(); else paintCalGrid();
+    handOverCamera('#video3', '#feedState3');
+  }
+  if (mode === 'recall') setTimeout(() => $('#recallQuery')?.focus(), 60);
   if (mode === 'practice') {
     if (!app.practice.target) nextPractice(); else drawRef(app.practice.target);
-    if (tracker.state === STATE.READY) {
-      // hand the stream to the practice video rather than asking twice
-      $('#video2').srcObject = tracker.stream;
-      $('#video2').play().catch(()=>{});
-      $('#feedState2').hidden = true;
-      tracker.video = $('#video2');
-    }
+    handOverCamera('#video2', '#feedState2');
   }
-  if (mode === 'interpret' && tracker.state === STATE.READY) {
-    $('#video').srcObject = tracker.stream;
-    $('#video').play().catch(()=>{});
-    tracker.video = $('#video');
-  }
+  if (mode === 'interpret') handOverCamera('#video', null);
   stab.reset();
 }
 
@@ -393,6 +572,30 @@ function wire() {
     a.href = url; a.download = `mercury-transcript-${Date.now()}.txt`; a.click();
     URL.revokeObjectURL(url);
   });
+
+  /* calibrate */
+  $('#btnStart3').addEventListener('click', () => startCam($('#video3')));
+  $('#btnCalRecord').addEventListener('click', () => {
+    if (tracker.state !== STATE.READY) return toast('start the camera first');
+    const c = app.calibrate;
+    if (c.recording > 0) return;
+    c.samples = []; c.target = 30; c.recording = 30;   // ~1s of frames, 5 samples
+    toast(`hold ${c.letter}`);
+  });
+  $('#btnCalSkip').addEventListener('click', () => nextCalLetter(
+    CAL_LETTERS[(CAL_LETTERS.indexOf(app.calibrate.letter) + 1) % CAL_LETTERS.length]));
+  $('#btnCalReset').addEventListener('click', async () => {
+    if (!confirm('Delete every calibration sample you have recorded?')) return;
+    await fetch('/api/vectors/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    app.calibrate.counts = {};
+    await ensemble.refreshCalibration();
+    paintCalGrid();
+    toast('calibration cleared');
+  });
+
+  /* recall */
+  $('#btnRecall').addEventListener('click', runRecall);
+  $('#recallQuery').addEventListener('keydown', e => { if (e.key === 'Enter') runRecall(); });
 
   /* practice */
   $('#btnSkip').addEventListener('click', nextPractice);
@@ -474,8 +677,8 @@ function wire() {
     if (e.key === ' ') { e.preventDefault(); app.letters += ' '; paintRaw(); }
     if (e.key === 'Backspace') { e.preventDefault(); app.letters = app.letters.slice(0, -1); paintRaw(); }
     if (e.key === 'Enter') { e.preventDefault(); buildSentence(); }
-    if (e.key >= '1' && e.key <= '4') {
-      setMode(['interpret', 'spell', 'practice', 'reference'][+e.key - 1]);
+    if (e.key >= '1' && e.key <= '6') {
+      setMode(['interpret', 'spell', 'practice', 'calibrate', 'recall', 'reference'][+e.key - 1]);
     }
   });
 }
@@ -506,6 +709,18 @@ function listVoices() {
   if (voice.voiceName) sel.value = voice.voiceName;
 }
 
+async function checkVectors() {
+  try {
+    const r = await fetch('/api/vectors/status').then(x => x.json());
+    const chip = $('#chipVec');
+    chip.classList.toggle('is-on', !!r.available);
+    chip.classList.toggle('is-off', !r.available);
+    $('#vecState').textContent = r.available ? r.mode.split(' ')[0] : 'off';
+    chip.title = r.available
+      ? `Qdrant, ${r.mode}` : `Vector store unavailable: ${r.reason || 'unknown'}`;
+  } catch { /* the chip stays neutral */ }
+}
+
 async function checkLlm() {
   const s = await llmStatus();
   const chip = $('#chipLlm');
@@ -533,9 +748,28 @@ function boot() {
   paintReading(null, 0, false);
   wire();
   checkLlm();
+  checkVectors();
   setMode('interpret');
 
   if (!voice.supported) toast('this browser cannot speak aloud');
+
+  // The neural classifier and the vector store are both optional: the
+  // studio recognises with geometry alone if either is missing.
+  ensemble.init().then(() => {
+    const chip = $('#chipNn');
+    chip.classList.toggle('is-on', ensemble.neuralReady);
+    chip.classList.toggle('is-off', !ensemble.neuralReady);
+    $('#nnState').textContent = ensemble.neuralReady
+      ? `${(ensemble.neural.meta.params / 1000).toFixed(1)}k` : 'off';
+    chip.title = ensemble.neuralReady
+      ? `${ensemble.neural.meta.params.toLocaleString()} parameters · ${(ensemble.neural.meta.val_accuracy * 100).toFixed(1)}% on held-out synthetic hands`
+      : 'Neural classifier unavailable; geometric matching only.';
+  });
+
+  // Face and pose are a real cost, so they load after the hands are working.
+  holistic.load().then(() => {
+    toast('reading facial grammar');
+  }).catch(() => { /* hands-only is a complete product */ });
 }
 
 document.readyState === 'loading'
@@ -546,5 +780,6 @@ document.readyState === 'loading'
    synthetic landmarks so the recognise → commit → sentence path can be
    tested without a pair of hands in front of a camera. */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) {
-  window.__mercury = { app, cfg, stab, tracker, voice, onFrame, buildSentence, setMode };
+  window.__mercury = { app, cfg, stab, tracker, voice, onFrame, buildSentence, setMode,
+                      ensemble, holistic, SESSION };
 }

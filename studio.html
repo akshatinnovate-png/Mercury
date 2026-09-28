@@ -24,11 +24,15 @@
     <button role="tab" class="mode is-on" data-mode="interpret" aria-selected="true"><i>01</i>Interpret</button>
     <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>02</i>Spell</button>
     <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>03</i>Practice</button>
-    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>04</i>Alphabet</button>
+    <button role="tab" class="mode" data-mode="calibrate" aria-selected="false"><i>04</i>Calibrate</button>
+    <button role="tab" class="mode" data-mode="recall" aria-selected="false"><i>05</i>Recall</button>
+    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>06</i>Alphabet</button>
   </nav>
 
   <div class="sbar__end">
     <span class="chip" id="chipLlm" title="Sentence repair"><i class="dot"></i><b>AI</b><span id="llmState">checking</span></span>
+    <span class="chip" id="chipNn" title="Neural classifier"><i class="dot"></i><b>NN</b><span id="nnState">loading</span></span>
+    <span class="chip" id="chipVec" title="Vector store"><i class="dot"></i><b>VEC</b><span id="vecState">—</span></span>
     <span class="chip" id="chipFps" title="Tracking frame rate"><b id="fpsVal">—</b> fps</span>
     <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings (,)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>
@@ -76,6 +80,18 @@
       </div>
 
       <div class="cands" id="cands"></div>
+
+      <div class="sources">
+        <p class="mono-label">ENSEMBLE <span class="tag" id="agreeTag">—</span></p>
+        <div class="src" id="srcTemplate"><span>GEOMETRIC</span><b>—</b><i></i></div>
+        <div class="src" id="srcNeural"><span>NEURAL</span><b>—</b><i></i></div>
+        <div class="src" id="srcPersonal"><span>PERSONAL</span><b>—</b><i></i></div>
+      </div>
+
+      <div class="nmm" id="nmm" hidden>
+        <p class="mono-label">NON&#8209;MANUAL</p>
+        <p class="nmm__read"><b id="nmmMarker">—</b><span id="nmmMeaning"></span></p>
+      </div>
 
       <div class="read__out">
         <p class="mono-label">LETTERS <button class="mini" id="btnClear" title="Clear (Esc)">clear</button></p>
@@ -167,6 +183,59 @@
       <canvas id="pracRef" class="prac-ref"></canvas>
       <p class="note">The reference hand shows the shape Mercury is looking for. Match it and hold.</p>
     </aside>
+  </section>
+
+  <!-- ========================= CALIBRATE ========================= -->
+  <section class="panel" data-panel="calibrate">
+    <div class="feed">
+      <video id="video3" playsinline muted autoplay></video>
+      <canvas id="overlay3"></canvas>
+      <div class="prompt" id="calPrompt">
+        <p class="mono-label">HOLD THIS SHAPE</p>
+        <div class="prompt__letter" id="calLetter">A</div>
+        <p class="prompt__note" id="calNote">fist, thumb alongside</p>
+        <div class="cal__bar"><i id="calBar"></i></div>
+      </div>
+      <div class="feed__state" id="feedState3">
+        <div class="feed__inner">
+          <p class="mono-label">CALIBRATE</p>
+          <h2>Teach Mercury your hands</h2>
+          <p>The model was trained on simulated hands. It has never seen yours. Record a few examples of each letter and Mercury will match against your own hands from then on &mdash; which matters most if your hands are an unusual size, or you have limited movement in them.</p>
+          <button class="btn btn--go" id="btnStart3">START CAMERA</button>
+        </div>
+      </div>
+    </div>
+    <aside class="read">
+      <div class="score">
+        <div><b id="calTotal">0</b><span>samples</span></div>
+        <div><b id="calLetters">0</b><span>of 24 letters</span></div>
+        <div><b id="calWeight">0%</b><span>personal weight</span></div>
+      </div>
+      <div class="row">
+        <button class="btn btn--go" id="btnCalRecord">RECORD 5 SAMPLES</button>
+        <button class="btn btn--ghost" id="btnCalSkip">NEXT LETTER</button>
+      </div>
+      <div class="cal__grid" id="calGrid"></div>
+      <div class="row">
+        <button class="btn btn--ghost" id="btnCalReset">CLEAR ALL CALIBRATION</button>
+      </div>
+      <p class="note">Samples are stored as vectors in Qdrant, on this machine by default. They are compared by nearest neighbour when recognising, and their influence grows with how many you record.</p>
+    </aside>
+  </section>
+
+  <!-- ========================= RECALL ========================= -->
+  <section class="panel panel--wide" data-panel="recall">
+    <div class="recall">
+      <div class="recall__head">
+        <h2>Search everything you have said</h2>
+        <p>Every sentence Mercury speaks is embedded and kept. Search it by meaning rather than scrolling.</p>
+        <div class="recall__box">
+          <input type="search" id="recallQuery" placeholder="pharmacy appointment&hellip;" autocomplete="off">
+          <button class="btn btn--go" id="btnRecall">SEARCH</button>
+        </div>
+      </div>
+      <ul class="recall__list" id="recallList"></ul>
+    </div>
   </section>
 
   <!-- ========================= REFERENCE ========================= -->
