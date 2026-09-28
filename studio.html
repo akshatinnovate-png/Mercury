@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" data-theme="void">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MERCURY STUDIO — Live Interpreter</title>
+<meta name="description" content="Point a camera at your hands. Mercury reads the sign, builds the sentence and says it out loud.">
+<meta name="theme-color" content="#04060d">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/studio.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='none' stroke='%23FF6B1A' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='%234DE8FF'/></svg>">
+</head>
+<body class="studio">
+
+<header class="sbar">
+  <a class="sbar__mark" href="index.html" title="Back to the story">
+    <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="11"/><circle cx="20" cy="20" r="3.2" class="core"/><path d="M20 4v5M20 31v5M4 20h5M31 20h5"/></svg>
+    <span>MERCURY<b>STUDIO</b></span>
+  </a>
+
+  <nav class="modes" role="tablist" aria-label="Mode">
+    <button role="tab" class="mode is-on" data-mode="interpret" aria-selected="true"><i>01</i>Interpret</button>
+    <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>02</i>Spell</button>
+    <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>03</i>Practice</button>
+    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>04</i>Alphabet</button>
+  </nav>
+
+  <div class="sbar__end">
+    <span class="chip" id="chipLlm" title="Sentence repair"><i class="dot"></i><b>AI</b><span id="llmState">checking</span></span>
+    <span class="chip" id="chipFps" title="Tracking frame rate"><b id="fpsVal">—</b> fps</span>
+    <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings (,)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="stage">
+
+  <!-- ========================= INTERPRET ========================= -->
+  <section class="panel is-on" data-panel="interpret">
+    <div class="feed">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="overlay"></canvas>
+
+      <div class="feed__state" id="feedState">
+        <div class="feed__inner">
+          <p class="mono-label">CAMERA</p>
+          <h2 id="stateTitle">Ready when you are</h2>
+          <p id="stateBody">Mercury reads your hands entirely on this device. No frame is uploaded, stored, or sent anywhere.</p>
+          <button class="btn btn--go" id="btnStart">START CAMERA</button>
+          <p class="feed__hint" id="stateHint">You will be asked for camera permission.</p>
+        </div>
+      </div>
+
+      <div class="feed__hud">
+        <span class="live" id="liveDot"><i class="dot"></i>LIVE</span>
+        <span id="handCount">0 hands</span>
+      </div>
+
+      <button class="icon-btn feed__mirror" id="btnMirror" title="Mirror the view">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18M7 7l-4 5 4 5M17 7l4 5-4 5"/></svg>
+      </button>
+    </div>
+
+    <aside class="read">
+      <div class="read__now">
+        <div class="glyph" id="bigLetter">—</div>
+        <div class="glyph__meta">
+          <p class="mono-label">READING</p>
+          <p class="glyph__note" id="letterNote">Waiting for a hand</p>
+          <div class="meter"><i id="confBar"></i></div>
+          <p class="mono-label"><b id="confVal">0.00</b> confidence · <b id="dwellVal">0%</b> held</p>
+        </div>
+      </div>
+
+      <div class="cands" id="cands"></div>
+
+      <div class="read__out">
+        <p class="mono-label">LETTERS <button class="mini" id="btnClear" title="Clear (Esc)">clear</button></p>
+        <p class="raw" id="rawOut"><span class="raw__empty">nothing yet</span></p>
+      </div>
+
+      <div class="read__sentence">
+        <p class="mono-label">SENTENCE <span class="tag" id="sentTag">local</span></p>
+        <p class="sentence" id="sentence">—</p>
+        <div class="row">
+          <button class="btn" id="btnRepair">BUILD SENTENCE</button>
+          <button class="btn btn--ghost" id="btnSpeak">SPEAK</button>
+        </div>
+      </div>
+
+      <div class="read__log">
+        <p class="mono-label">TRANSCRIPT
+          <button class="mini" id="btnCopy">copy</button>
+          <button class="mini" id="btnDownload">save</button>
+        </p>
+        <ul class="log" id="log"></ul>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ========================= SPELL ========================= -->
+  <section class="panel" data-panel="spell">
+    <div class="spell__stage">
+      <canvas id="spellCanvas"></canvas>
+      <div class="spell__strip" id="spellStrip"></div>
+    </div>
+    <aside class="read">
+      <p class="mono-label">TEXT TO SIGN</p>
+      <textarea id="spellInput" rows="4" placeholder="Type anything — Mercury will fingerspell it back.">HELLO MERCURY</textarea>
+      <div class="row">
+        <button class="btn btn--go" id="btnSpellPlay">PLAY</button>
+        <button class="btn btn--ghost" id="btnSpellStop">RESET</button>
+        <button class="btn btn--ghost" id="btnListen" title="Speak instead of typing">🎙 DICTATE</button>
+      </div>
+      <label class="slider">
+        <span class="mono-label">SPEED <b id="spellSpeedVal">1.0×</b></span>
+        <input type="range" id="spellSpeed" min="0.4" max="2.4" step="0.1" value="1">
+      </label>
+      <div class="read__out">
+        <p class="mono-label">NOW SIGNING</p>
+        <p class="sentence" id="spellNow">—</p>
+      </div>
+      <p class="note">Fingerspelling is only part of sign language — it is how names and new words are spelled out. Mercury animates the 26 letters of the American manual alphabet.</p>
+    </aside>
+  </section>
+
+  <!-- ========================= PRACTICE ========================= -->
+  <section class="panel" data-panel="practice">
+    <div class="feed">
+      <video id="video2" playsinline muted autoplay></video>
+      <canvas id="overlay2"></canvas>
+      <div class="prompt" id="prompt">
+        <p class="mono-label">SIGN THIS</p>
+        <div class="prompt__letter" id="promptLetter">A</div>
+        <p class="prompt__note" id="promptNote">fist, thumb alongside</p>
+      </div>
+      <div class="feed__state" id="feedState2">
+        <div class="feed__inner">
+          <p class="mono-label">PRACTICE</p>
+          <h2>Learn the manual alphabet</h2>
+          <p>Mercury shows a letter, you sign it, and it tells you the moment you have it right.</p>
+          <button class="btn btn--go" id="btnStart2">START CAMERA</button>
+        </div>
+      </div>
+    </div>
+    <aside class="read">
+      <div class="score">
+        <div><b id="scoreRight">0</b><span>correct</span></div>
+        <div><b id="scoreStreak">0</b><span>streak</span></div>
+        <div><b id="scoreAcc">—</b><span>accuracy</span></div>
+      </div>
+      <div class="read__now">
+        <div class="glyph" id="pracLetter">—</div>
+        <div class="glyph__meta">
+          <p class="mono-label">YOU ARE SIGNING</p>
+          <div class="meter"><i id="pracBar"></i></div>
+          <p class="mono-label" id="pracHint">Show your hand to begin</p>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnSkip">SKIP LETTER</button>
+        <button class="btn btn--ghost" id="btnResetScore">RESET SCORE</button>
+      </div>
+      <canvas id="pracRef" class="prac-ref"></canvas>
+      <p class="note">The reference hand shows the shape Mercury is looking for. Match it and hold.</p>
+    </aside>
+  </section>
+
+  <!-- ========================= REFERENCE ========================= -->
+  <section class="panel panel--wide" data-panel="reference">
+    <div class="abc" id="abc"></div>
+  </section>
+
+</main>
+
+<!-- ========================= SETTINGS ========================= -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__card" role="dialog" aria-label="Settings">
+    <div class="sheet__bar"><span>SETTINGS</span><button class="mini" id="btnCloseSheet">close</button></div>
+    <div class="sheet__body">
+
+      <label class="field">
+        <span class="mono-label">CAMERA</span>
+        <select id="selCamera"><option>Default</option></select>
+      </label>
+
+      <label class="field">
+        <span class="mono-label">HOLD TO COMMIT <b id="dwellLabel">380 ms</b></span>
+        <input type="range" id="setDwell" min="150" max="1200" step="10" value="380">
+        <em>How long a handshape must be held before Mercury accepts it.</em>
+      </label>
+
+      <label class="field">
+        <span class="mono-label">MINIMUM CONFIDENCE <b id="confLabel">0.55</b></span>
+        <input type="range" id="setConf" min="0.2" max="0.95" step="0.01" value="0.55">
+        <em>Raise it to reduce wrong letters; lower it if nothing commits.</em>
+      </label>
+
+      <label class="field field--row">
+        <input type="checkbox" id="setSpeak" checked>
+        <span>Speak each sentence aloud</span>
+      </label>
+
+      <label class="field field--row">
+        <input type="checkbox" id="setAuto" checked>
+        <span>Build the sentence automatically after a pause</span>
+      </label>
+
+      <label class="field">
+        <span class="mono-label">VOICE</span>
+        <select id="selVoice"><option>System default</option></select>
+      </label>
+
+      <label class="field">
+        <span class="mono-label">SPEAKING RATE <b id="rateLabel">1.0×</b></span>
+        <input type="range" id="setRate" min="0.6" max="1.6" step="0.05" value="1">
+      </label>
+
+      <label class="field">
+        <span class="mono-label">GROQ API KEY</span>
+        <input type="password" id="setKey" placeholder="gsk_… (optional)" autocomplete="off">
+        <em>Better: set <code>GROQ_API_KEY</code> in your environment before starting the server, and the key never reaches the browser at all. A key entered here stays on this device.</em>
+      </label>
+
+      <div class="sheet__keys">
+        <p class="mono-label">KEYBOARD</p>
+        <ul>
+          <li><kbd>Space</kbd> insert a word break</li>
+          <li><kbd>Backspace</kbd> delete the last letter</li>
+          <li><kbd>Enter</kbd> build the sentence and speak it</li>
+          <li><kbd>Esc</kbd> clear</li>
+          <li><kbd>,</kbd> settings</li>
+          <li><kbd>1</kbd>–<kbd>4</kbd> switch mode</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="assets/js/studio/main.js"></script>
+</body>
+</html>

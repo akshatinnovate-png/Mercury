@@ -6,7 +6,7 @@
 import { onTick, getFps, clamp, lerp } from './gfx.js';
 
 const TICKER = [
-  ['LIVE', 'interface build 0.1 — no model attached yet'],
+  ['LIVE', 'open the studio and sign into your camera'],
   ['SPEC', '21 landmarks · 20 bones · 3 dimensions'],
   ['WHY',  '1.2 billion people live with hearing loss — WHO'],
   ['NOTE', 'sign languages are not signed versions of spoken ones'],

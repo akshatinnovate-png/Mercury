@@ -13,12 +13,37 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+import urllib.error
+import urllib.request
+from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HOST, PORT = "127.0.0.1", 8000
+
+# The key stays on this side. The browser never sees it, and the page
+# talks only to /api/llm on this server.
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+
+# Mercury sends fingerspelled letters, which arrive without spaces, without
+# punctuation and with the odd misread. The model's whole job is to turn that
+# into the sentence the signer meant.
+SYSTEM_PROMPT = """You reconstruct sentences from American Sign Language fingerspelling.
+
+The input is a raw stream of recognised letters. It may contain no spaces, missing letters, or letters misread as visually similar ones (M/N, S/T, U/V, A/E, D/Z, I/J, K/P, G/Q are the common confusions).
+
+Return ONLY the most likely intended sentence:
+- insert word boundaries and punctuation
+- correct letters that were clearly misread
+- use normal sentence capitalisation
+- never add information that is not implied by the letters
+- if the letters cannot form sensible words, return your best literal reading
+
+Reply with the sentence and nothing else. No quotes, no explanation."""
 
 # The 21 landmarks Mercury solves for, in MediaPipe order.
 LANDMARKS = [
@@ -50,7 +75,13 @@ class Mercury(SimpleHTTPRequestHandler):
     # ---- routing -------------------------------------------------
     def do_GET(self):  # noqa: N802  (stdlib naming)
         routes = {
-            "/api/health":   lambda: {"status": "ok", "stage": "interface-build", "model": None},
+            "/api/health": lambda: {
+                "status": "ok",
+                "llm": {
+                    "configured": bool(GROQ_KEY),
+                    "model": GROQ_MODEL if GROQ_KEY else None,
+                },
+            },
             "/api/topology": lambda: {"landmarks": LANDMARKS, "bones": 20},
             "/api/pipeline": lambda: {"stages": PIPELINE},
         }
@@ -60,19 +91,79 @@ class Mercury(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):  # noqa: N802
-        if self.path.split("?")[0] != "/api/interpret":
-            self.send_error(404)
-            return
-        # Placeholder: the interpreter is not wired up in this build.
-        self._json(
-            {
-                "ok": False,
-                "reason": "no model attached in the interface build",
-                "expects": {"frames": "list[list[[x, y, z] * 21]]", "fps": "int"},
-                "returns": {"gloss": "list[str]", "text": "str", "confidence": "float"},
+        route = self.path.split("?")[0]
+        if route == "/api/llm":
+            return self._llm()
+        self.send_error(404)
+
+    # ---- language model ------------------------------------------
+    def _llm(self) -> None:
+        """Proxy a completion to Groq. Degrades to a clear 'off' rather than
+        an error, so the studio keeps working with the model unavailable."""
+        try:
+            size = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(size) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            return self._json({"ok": False, "reason": "bad request body"}, 400)
+
+        text = str(body.get("text", ""))[:4000].strip()
+        if not text:
+            return self._json({"ok": False, "reason": "nothing to interpret"}, 400)
+
+        # The environment variable is the documented path. A key sent from the
+        # page is accepted as a convenience because this server only ever
+        # listens on loopback, and it is never written to disk.
+        key = GROQ_KEY or (self.headers.get("X-Mercury-Key") or "").strip()
+
+        if not key:
+            return self._json(
+                {
+                    "ok": False,
+                    "reason": "no-key",
+                    "detail": "Set GROQ_API_KEY in the environment to enable sentence repair.",
+                },
+                503,
+            )
+
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": body.get("system") or SYSTEM_PROMPT},
+                {"role": "user", "content": text},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 300,
+        }
+        req = urllib.request.Request(
+            GROQ_URL,
+            data=json.dumps(payload).encode(),
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
             },
-            status=501,
         )
+        try:
+            with urllib.request.urlopen(req, timeout=25) as res:
+                data = json.loads(res.read())
+            out = data["choices"][0]["message"]["content"].strip()
+            usage = data.get("usage", {})
+            return self._json(
+                {
+                    "ok": True,
+                    "text": out,
+                    "model": data.get("model", GROQ_MODEL),
+                    "tokens": usage.get("total_tokens"),
+                }
+            )
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="replace")[:400]
+            return self._json(
+                {"ok": False, "reason": f"groq {exc.code}", "detail": detail}, 502
+            )
+        except Exception as exc:  # network down, DNS, timeout
+            return self._json(
+                {"ok": False, "reason": "unreachable", "detail": str(exc)[:200]}, 502
+            )
 
     # ---- helpers -------------------------------------------------
     def _json(self, payload: dict, status: int = 200) -> None:
@@ -86,6 +177,10 @@ class Mercury(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         # ES modules and a fast edit loop both want these.
         self.send_header("Cache-Control", "no-store")
+        # getUserMedia and the MediaPipe WASM both need a trustworthy origin;
+        # localhost already counts, and these let the model load cross-thread.
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
         super().end_headers()
 
     def log_message(self, fmt, *args):
@@ -96,14 +191,15 @@ def main() -> None:
     mimetypes.add_type("text/javascript", ".js")
     port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
     try:
-        server = HTTPServer((HOST, port), Mercury)
+        server = ThreadingHTTPServer((HOST, port), Mercury)
     except OSError as exc:
         # Port 8000 is a popular default; say so plainly instead of a traceback.
         print(f"\n  Port {port} is not free ({exc.strerror}).")
         print(f"  Try another one:  python server/app.py {port + 1}\n")
         raise SystemExit(1)
 
-    print(f"\n  MERCURY — interface build\n  http://{HOST}:{port}\n")
+    state = f"sentence repair: {GROQ_MODEL}" if GROQ_KEY else "sentence repair: off (set GROQ_API_KEY)"
+    print(f"\n  MERCURY\n  http://{HOST}:{port}\n  {state}\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
