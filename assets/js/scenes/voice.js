@@ -3,9 +3,7 @@
    The corridor opens into an ocean of sound; then the camera lifts
    through cloud until the whole network is visible at once.
    ================================================================ */
-import {
-  fitCanvas, onTick, whenVisible, clamp, lerp, ease, rng, TAU
-} from '../core/gfx.js';
+import { fitCanvas, onTick, whenVisible, clamp, lerp, ease, rng, TAU } from '../core/gfx.js';
 import { scrub } from '../core/scroll.js';
 
 /* ---------------------------------------------------------------- VOICE */
@@ -115,77 +113,6 @@ export function sceneVoice() {
   });
 }
 
-/* --------------------------------------------------------------- ASCENT */
-export function sceneAscent() {
-  const cv = document.getElementById('cvAscent');
-  if (!cv) return;
-
-  const rand = rng(99);
-  /* people, as a network that finally resolves into one shape */
-  const N = 54;
-  const nodes = Array.from({ length: N }, (_, i) => ({
-    a: rand() * TAU, r: 0.18 + rand() * 0.8, sp: (rand() - 0.5) * 0.09,
-    z: rand(), s: 1 + rand() * 1.8
-  }));
-  const clouds = Array.from({ length: 16 }, () => ({
-    x: rand(), y: rand(), r: 0.16 + rand() * 0.26, v: 0.004 + rand() * 0.012, o: 0.05 + rand() * 0.1
-  }));
-
-  let alive = false, t = 0, prog = 0;
-  scrub('#act-ascent', p => { prog = p; }, { start: 'top bottom', end: 'bottom top' });
-  whenVisible(document.getElementById('act-ascent'), () => alive = true, () => alive = false);
-
-  onTick(dt => {
-    if (!alive) return;
-    t += dt;
-    const { ctx, w, h } = fitCanvas(cv);
-
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#040814'); g.addColorStop(0.6, '#0a1430'); g.addColorStop(1, '#122246');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-
-    /* cloud deck drifting between us and the network */
-    for (const c of clouds) {
-      const x = ((c.x + t * c.v) % 1.3 - 0.15) * w;
-      const y = c.y * h;
-      const R = c.r * Math.min(w, h);
-      const cg = ctx.createRadialGradient(x, y, 0, x, y, R);
-      cg.addColorStop(0, `rgba(190,215,255,${c.o})`);
-      cg.addColorStop(1, 'rgba(190,215,255,0)');
-      ctx.fillStyle = cg;
-      ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill();
-    }
-
-    const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.38;
-    const pts = nodes.map(n => {
-      const a = n.a + t * n.sp;
-      return { x: cx + Math.cos(a) * R * n.r, y: cy + Math.sin(a) * R * n.r * 0.62, s: n.s, z: n.z };
-    });
-
-    /* links: only near neighbours, so the graph breathes */
-    for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) {
-        const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
-        if (d > R * 0.42) continue;
-        ctx.strokeStyle = `rgba(77,232,255,${(1 - d / (R * 0.42)) * 0.16})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke();
-      }
-    }
-    for (const p of pts) {
-      ctx.fillStyle = `rgba(255,${180 + p.z * 60 | 0},${120 + p.z * 90 | 0},${0.5 + p.z * 0.5})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, TAU); ctx.fill();
-    }
-
-    /* the messenger, at the centre of it */
-    const pulse = 0.5 + Math.sin(t * 1.5) * 0.5;
-    ctx.strokeStyle = `rgba(255,107,26,${0.25 + pulse * 0.35})`;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.arc(cx, cy, R * 0.16 + pulse * 8, 0, TAU); ctx.stroke();
-    ctx.fillStyle = '#ff6b1a';
-    ctx.beginPath(); ctx.arc(cx, cy, 3.4, 0, TAU); ctx.fill();
-  });
-}
 
 /* ---------------------------------------------------------------- CLOSE */
 export function sceneClose() {

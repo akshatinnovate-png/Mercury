@@ -8,7 +8,7 @@
 
 /* ================= ACT I — VOID ================= */
 .act--void{background:var(--void-0)}
-.act--void{height:300vh}
+.act--void{height:420vh}
 .void__sticky{position:sticky;top:0;height:100vh;overflow:hidden}
 .void__vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:radial-gradient(120% 90% at 78% 46%,transparent 34%,rgba(4,6,13,.82) 78%)}
@@ -28,27 +28,32 @@
 @media (max-width:760px){.void__meta{gap:1.6rem}.scroll-cue{display:none}}
 
 /* ================= ACT II — DESCENT ================= */
-/* black -> violet -> cyan -> daylight. The atmosphere entry. */
-.act--descent{background:var(--void-0);height:280vh}
+/* A fall, not a wipe: stars, airglow and three cloud decks, all
+   drawn in cvDescent. 520vh so the fall has time to read. */
+.act--descent{background:var(--void-0);height:520vh}
 .descent__sticky{position:sticky;top:0;height:100vh;overflow:hidden;
   display:grid;place-items:center}
-.descent__sky{position:absolute;inset:0;z-index:0;
-  background:linear-gradient(180deg,
-    #04060d 0%, #0a0a2e 18%, #1b1a6b 34%,
-    #2f4fb8 52%, #5f9be0 68%, #a9cdf2 82%, #f7f7f4 100%);
-  background-size:100% 340%;background-position:0% 0%}
 .descent__copy{position:relative;z-index:var(--z-copy);text-align:center;
-  display:grid;justify-items:center;gap:1.4rem;padding-inline:var(--shell)}
+  display:grid;justify-items:center;gap:1.4rem;padding-inline:var(--shell);
+  mix-blend-mode:difference}
 .descent__kicker{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.32em;
-  text-transform:uppercase;color:var(--signal)}
-.descent__line{color:#fff;mix-blend-mode:difference}
-.descent__note{font-size:var(--fs-lede);line-height:1.6;color:rgba(255,255,255,.78);
+  text-transform:uppercase;color:#fff}
+.descent__line{color:#fff}
+.descent__note{font-size:var(--fs-lede);line-height:1.6;color:#fff;
   max-width:46ch;margin-inline:auto}
+
+/* altimeter */
+.alt{position:absolute;left:var(--shell);top:50%;translate:0 -50%;z-index:var(--z-copy);
+  display:grid;gap:.35rem;font-family:var(--mono);text-transform:uppercase;
+  border-left:1px solid rgba(255,255,255,.35);padding-left:.9rem}
+.alt__v{font-size:.8rem;letter-spacing:.14em;color:#fff;font-variant-numeric:tabular-nums}
+.alt__l{font-size:.55rem;letter-spacing:.26em;color:var(--signal)}
+@media (max-width:860px){.alt{display:none}}
 
 /* ================= ACT III — THE HAND ================= */
 /* daylight. the reach-stacker beat: one object, scrubbed. */
 .act--hand{background:var(--paper-0);color:var(--ink-0)}
-.act--hand{height:520vh}
+.act--hand{height:720vh}
 .hand__sticky{position:sticky;top:0;height:100vh;overflow:hidden;
   display:grid;place-items:center}
 .hand__sticky .scene-canvas{z-index:1}
@@ -95,9 +100,10 @@
 /* ================= ACT IV — PIPELINE ================= */
 /* camera flips top-down. the corridor is negative space. */
 .act--pipeline{background:var(--paper-0);color:var(--ink-0)}
-.act--pipeline{height:500vh}
+.act--pipeline{height:640vh}
 .pipe__sticky{position:sticky;top:0;height:100vh;overflow:hidden}
-.pipe__title{position:absolute;left:0;top:14vh;z-index:var(--z-copy);pointer-events:none}
+.pipe__title{position:absolute;left:0;top:12vh;z-index:var(--z-copy);pointer-events:none;
+  max-width:min(100%,62ch)}
 .pipe__hud{position:absolute;left:var(--shell);bottom:3rem;z-index:var(--z-copy);
   padding:.9rem 1.1rem;background:color-mix(in srgb,var(--paper-0) 88%,transparent);
   backdrop-filter:blur(8px);border:1px solid rgba(10,10,11,.10);border-radius:4px}
@@ -107,8 +113,8 @@
   font-variant-numeric:tabular-nums}
 .pipe__ms span{font-family:var(--mono);font-size:.9rem;color:var(--ink-2)}
 .pipe__stage{color:var(--signal)!important}
-.pipe__cards{position:absolute;right:var(--shell);top:50%;translate:0 -50%;
-  z-index:var(--z-copy);width:min(34vw,340px);display:grid;gap:.5rem}
+.pipe__cards{position:absolute;right:var(--shell);top:54%;translate:0 -50%;
+  z-index:var(--z-copy);width:min(30vw,320px);display:grid;gap:.45rem}
 .pcard{border:1px solid rgba(10,10,11,.18);padding:.85rem .95rem;background:rgba(247,247,244,.93);
   backdrop-filter:blur(8px);opacity:.55;transition:opacity .4s,border-color .4s,background .4s}
 .pcard.is-live{opacity:1;border-color:var(--ink-0);background:var(--ink-0);color:var(--paper-0)}
@@ -119,7 +125,7 @@
 
 /* ================= ACT V — THE VOICE ================= */
 .act--wave{background:#050a1a;color:#fff}
-.act--wave{height:360vh}
+.act--wave{height:480vh}
 .wave__sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:grid;place-items:center}
 .wave__center{position:relative;z-index:var(--z-copy);text-align:center;display:grid;
   justify-items:center;gap:1.2rem}
@@ -140,7 +146,7 @@
   mask-image:radial-gradient(70% 60% at 50% 50%,#000,transparent)}
 
 /* ================= ACT VI — ASCENT ================= */
-.act--ascent{background:#050a1a;color:#fff;height:220vh}
+.act--ascent{background:#050a1a;color:#fff;height:460vh}
 .ascent__sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:grid;place-items:center}
 .ascent__copy{position:relative;z-index:var(--z-copy);text-align:center;display:grid;
   justify-items:center;gap:1rem}

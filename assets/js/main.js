@@ -13,8 +13,9 @@ import { reveal }      from './ui/reveal.js';
 import { sceneVoid }     from './scenes/void.js';
 import { sceneHand }     from './scenes/hand.js';
 import { scenePipeline } from './scenes/pipeline.js';
-import { sceneVoice, sceneAscent, sceneClose } from './scenes/voice.js';
-import { sceneLab, sceneDescent }              from './scenes/lab.js';
+import { sceneVoice, sceneClose }         from './scenes/voice.js';
+import { sceneDescent, sceneAscent }      from './scenes/descent.js';
+import { sceneLab }                       from './scenes/lab.js';
 
 async function start() {
   // chrome that should exist behind the curtain

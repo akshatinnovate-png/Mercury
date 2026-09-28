@@ -123,27 +123,3 @@ function b64() {
 
 export function sceneLab() { life(); race(); b64(); }
 
-/* --------------------------------------- ACT II — the descent sky */
-/* Scrubbing background-position across an oversized gradient reads as
-   falling through the atmosphere, and costs nothing to paint. */
-export function sceneDescent() {
-  const sky = document.getElementById('descentSky');
-  const kick = document.getElementById('descentKicker');
-  if (!sky) return;
-
-  const MARKS = [
-    [0.00, 'ENTERING RANGE'], [0.28, 'ALTITUDE 84 KM'],
-    [0.52, 'ALTITUDE 31 KM'], [0.74, 'ALTITUDE 9 KM'], [0.92, 'TOUCHDOWN']
-  ];
-  let last = '';
-
-  ScrollTrigger.create({
-    trigger: '#act-descent', start: 'top top', end: 'bottom bottom', scrub: true,
-    onUpdate: s => {
-      const p = s.progress;
-      sky.style.backgroundPosition = `0% ${(p * 100).toFixed(2)}%`;
-      const m = MARKS.reduce((acc, x) => p >= x[0] ? x[1] : acc, MARKS[0][1]);
-      if (m !== last) { last = m; kick.textContent = m; }
-    }
-  });
-}

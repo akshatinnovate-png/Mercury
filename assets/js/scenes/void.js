@@ -8,6 +8,7 @@ import {
   rng, clamp, lerp, ease, TAU
 } from '../core/gfx.js';
 import { scrub } from '../core/scroll.js';
+import { makeStars, drawStars } from './atmos.js';
 
 /* Hubs are placed by lat/lon so the corridors read as real routes. */
 const HUBS = [
@@ -27,9 +28,7 @@ export function sceneVoid() {
 
   const shell   = fibSphere(5200);         // the planet surface
   const rand    = rng(7);
-  const stars   = Array.from({ length: 420 }, () => ({
-    x: rand(), y: rand(), r: rand() * 1.5 + 0.25, tw: rand() * TAU
-  }));
+  const stars   = makeStars(760, 7);   // three parallax bands
   const hubs    = HUBS.map(([n, la, lo]) => ({ name: n, v: toVec(la, lo) }));
   const routes  = [];
   for (let i = 0; i < hubs.length; i++) {
@@ -64,13 +63,8 @@ export function sceneVoid() {
     ctx.translate(cx - w / 2, 0);
     ctx.globalAlpha = fade;
 
-    /* ---- starfield (parallax: barely moves) ---- */
-    for (const s of stars) {
-      const sx = s.x * w, sy = (s.y * h + prog * 40) % h;
-      const a = 0.25 + Math.sin(t * 1.4 + s.tw) * 0.2;
-      ctx.fillStyle = `rgba(200,210,235,${a * fade})`;
-      ctx.fillRect(sx, sy, s.r, s.r);
-    }
+    /* ---- starfield: near bands drift hardest, which reads as depth ---- */
+    drawStars(ctx, w, h, stars, t, { scroll: prog * 0.5, alpha: fade });
 
     /* ---- limb light: a tight corona hugging the edge, not a wash ---- */
     const R = fov / camZ;

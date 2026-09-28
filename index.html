@@ -104,15 +104,19 @@
 <!-- ============================================ ACT II — DESCENT ============================================ -->
 <section class="act act--descent" id="act-descent" data-act="II" data-scene="DESCENT">
   <div class="descent__sticky">
-    <div class="descent__sky" id="descentSky"></div>
+    <canvas id="cvDescent" class="scene-canvas"></canvas>
+    <div class="alt" aria-hidden="true">
+      <span class="alt__v" id="descentAlt">ALTITUDE 120 KM</span>
+      <span class="alt__l" id="descentLayer">EXOSPHERE</span>
+    </div>
     <div class="descent__copy">
-      <p class="descent__kicker" id="descentKicker">ENTERING RANGE</p>
+      <p class="descent__kicker">FIVE CHANNELS, SPOKEN AT ONCE</p>
       <h2 class="display display--lg descent__line">
         <span class="line"><span class="word">SIGN IS NOT</span></span>
         <span class="line"><span class="word">MIME. IT IS</span></span>
         <span class="line"><span class="word">GRAMMAR.</span></span>
       </h2>
-      <p class="descent__note">Handshape. Location. Movement. Orientation. Expression.<br>Five channels, spoken at once. Mercury reads all five.</p>
+      <p class="descent__note">Handshape. Location. Movement. Orientation. Expression.<br>Mercury reads all five.</p>
     </div>
   </div>
 </section>
@@ -183,6 +187,7 @@
   <div class="ascent__sticky">
     <canvas id="cvAscent" class="scene-canvas"></canvas>
     <div class="ascent__copy shell">
+      <p class="eyebrow eyebrow--light"><i class="tick"></i>ACT VI — THE ASCENT</p>
       <h2 class="display display--lg">ONE SIGNER.<br><span class="muted">EVERY ROOM.</span></h2>
       <p class="lede lede--light">A classroom in Nagpur. A pharmacy counter in Lisbon. A 3am emergency line.<br>Mercury runs on the glass already in the pocket.</p>
     </div>
