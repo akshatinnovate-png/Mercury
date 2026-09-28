@@ -9,6 +9,10 @@ doesn't sign, fast enough that nobody has to wait for it.
 Two pieces: a scroll-driven **story** at `index.html`, and the **studio** at
 `studio.html` — a working interpreter that reads your hands through a webcam.
 
+> **New here?** [`EXPLAINER.md`](EXPLAINER.md) explains the whole project from
+> scratch, including a glossary of every technical term in it.
+> [`QA.md`](QA.md) is the questions people actually ask, with answers.
+
 ---
 
 ## What it is
