@@ -12,6 +12,7 @@ import { classify, Stabiliser, NOTES, TEMPLATES, MOTION_LETTERS } from './asl.js
 import { Ensemble } from './ensemble.js';
 import { Holistic } from './holistic.js';
 import { Predictor } from './predict.js';
+import { Avatar } from './avatar.js';
 import { encode } from './encode.js';
 import { drawOverlay } from './overlay.js';
 import { Speller } from './speller.js';
@@ -26,6 +27,8 @@ const $$ = s => [...document.querySelectorAll(s)];
 
 /* ---------------------------------------------------------- state */
 const cfg = {
+  // Confirm is the default: automatic commit is unforgiving at signing speed.
+  commit: localStorage.getItem('mercury.commit') || 'confirm',
   dwell:  +(localStorage.getItem('mercury.dwell') || 380),
   minConf:+(localStorage.getItem('mercury.minConf') || 0.55),
   auto:   localStorage.getItem('mercury.auto') !== '0',
@@ -43,7 +46,7 @@ const app = {
 };
 
 const voice = new Voice();
-const stab = new Stabiliser({ dwell: cfg.dwell, minConfidence: cfg.minConf });
+const stab = new Stabiliser({ dwell: cfg.dwell, minConfidence: cfg.minConf, mode: cfg.commit });
 
 /* A stable id for this machine, so calibration belongs to a person
    rather than to a tab. */
@@ -141,7 +144,7 @@ async function onFrame({ hands }, now) {
 
   if (inCalibrate) return onCalibrateFrame(hand, res, ctx, w, h, now);
 
-  const { letter, progress, committed } = stab.push(res, now);
+  const { letter, progress, committed, steady, ranked } = stab.push(res, now);
 
   drawOverlay(ctx, w, h, [hand], {
     mirror: tracker.mirror, dwell: progress,
@@ -150,6 +153,7 @@ async function onFrame({ hands }, now) {
 
   paintReading(res, progress, inPractice);
   paintSources(res);
+  if (!inPractice && !inCalibrate) paintConfirm(letter, progress, steady, ranked);
   if (inConverse) {
     $('#convLetter').textContent = letter || '—';
     setTurn('sign');
@@ -158,7 +162,50 @@ async function onFrame({ hands }, now) {
   if (committed) {
     if (inPractice) scorePractice(committed);
     else commitLetter(committed, now);
+  } else if (inPractice && steady && cfg.commit === 'confirm') {
+    // practice is a drill, not a transcript: score the settled reading
+    // directly so the learner is not pressing a key between every letter
+    const got = stab.take();
+    if (got) scorePractice(got);
   }
+}
+
+/* The proposal panel. Nothing is taken here — it only shows what Mercury
+   currently believes and whether that belief has settled. */
+let proposal = { letter: null, ready: false, alts: [] };
+
+function paintConfirm(letter, progress, steady, ranked) {
+  proposal.letter = steady ? letter : null;
+  proposal.ready = !!steady;
+  proposal.alts = (ranked || []).slice(0, 4).filter(r => r.letter !== letter);
+
+  for (const n of ['', '2']) {
+    const bar = $(`#confirmBar${n}`);
+    if (!bar) continue;
+    bar.classList.toggle('is-ready', !!steady);
+    $(`#confirmGlyph${n}`).textContent = letter || '—';
+    $(`#confirmFill${n}`).style.width = `${Math.round((progress || 0) * 100)}%`;
+    $(`#confirmState${n}`).textContent = !letter ? 'show a handshape'
+      : steady ? 'ready — press space to take it'
+      : 'hold still…';
+    $(`#btnConfirm${n}`).disabled = !steady;
+
+    const alts = $(`#confirmAlts${n}`);
+    alts.innerHTML = proposal.alts.length && steady
+      ? proposal.alts.map((r, i) =>
+          `<button class="alt" data-letter="${r.letter}"><kbd>${i + 1}</kbd><b>${r.letter}</b><span>${(r.score * 100).toFixed(0)}%</span></button>`
+        ).join('')
+      : '';
+  }
+}
+
+/** Take the proposal, or an alternative the signer picked instead. */
+function takeLetter(letter = null) {
+  if (cfg.commit !== 'confirm') return;
+  const got = stab.take(letter);
+  if (!got) return toast('nothing to confirm yet');
+  commitLetter(got);
+  paintConfirm(null, 0, false, []);
 }
 
 function paintSources(res) {
@@ -433,6 +480,43 @@ function buildAbc() {
   });
 }
 
+/* ====================================================== AVATAR === */
+/* three.js is 650KB, so it loads only when the tab is first opened. */
+let avatar = null, avatarLoading = null;
+
+function initAvatar() {
+  if (avatar || avatarLoading) return avatarLoading;
+  avatarLoading = (async () => {
+    const a = new Avatar($('#avCanvas'));
+    a.init();
+    a.onLetter = (ch, i) => {
+      $('#avNow').textContent = ch === ' ' ? '·' : (ch || '—');
+      [...$('#avStrip').children].forEach((b, k) => {
+        b.classList.toggle('is-on', k === i);
+        b.classList.toggle('is-done', k < i);
+      });
+    };
+    avatar = a;
+    onTick(dt => { if (app.mode === 'avatar') avatar.update(dt); });
+    loadAvatarText();
+    return a;
+  })().catch(err => {
+    avatarLoading = null;
+    toast('3D is unavailable on this device');
+    console.warn('[mercury] avatar:', err.message);
+  });
+  return avatarLoading;
+}
+
+function loadAvatarText() {
+  if (!avatar) return;
+  const text = $('#avInput').value;
+  avatar.load(text);
+  $('#avStrip').innerHTML = [...text.toUpperCase()]
+    .map(c => `<b>${c === ' ' ? '·' : c}</b>`).join('');
+  $('#avNow').textContent = '—';
+}
+
 /* ==================================================== CONVERSE === */
 /* Two people, one device. The signer is heard, the speaker is seen.
    Both directions write into the same conversation. */
@@ -631,6 +715,7 @@ function setMode(mode) {
 
   if (mode === 'spell') initSpell();
   if (mode === 'reference') { if (abcBuilt === 'paused') { abcBuilt = false; } buildAbc(); }
+  if (mode === 'avatar') initAvatar();
   if (mode === 'converse') {
     initConverse();
     handOverCamera('#video4', '#feedState4');
@@ -695,11 +780,37 @@ function wire() {
     URL.revokeObjectURL(url);
   });
 
+  /* confirm */
+  $('#btnConfirm').addEventListener('click', () => takeLetter());
+  $('#btnConfirm2').addEventListener('click', () => takeLetter());
+  document.addEventListener('click', e => {
+    const alt = e.target.closest?.('.alt');
+    if (alt) takeLetter(alt.dataset.letter);
+  });
+
   /* suggestions — click, or press the number shown on the chip */
   document.addEventListener('click', e => {
     const chip = e.target.closest?.('.sugg__chip');
     if (chip) acceptSuggestion(chip.dataset.word);
   });
+
+  /* avatar */
+  $('#btnAvPlay').addEventListener('click', async () => {
+    await initAvatar();
+    if (!avatar) return;
+    loadAvatarText();
+    avatar.play();
+  });
+  $('#btnAvStop').addEventListener('click', () => { avatar?.stop(); loadAvatarText(); });
+  $('#avInput').addEventListener('input', () => avatar && loadAvatarText());
+  $('#avSpeed').addEventListener('input', e => {
+    if (avatar) avatar.speed = +e.target.value;
+    $('#avSpeedVal').textContent = `${(+e.target.value).toFixed(1)}×`;
+  });
+  const view = (az, el, dist, focus) => () => avatar?.setView(az, el, dist, focus);
+  $('#btnAvFront').addEventListener('click', view(0.00, 0.04, 1.85, 'body'));
+  $('#btnAvSide').addEventListener('click', view(1.20, 0.06, 1.75, 'body'));
+  $('#btnAvHand').addEventListener('click', view(0.25, 0.02, 0.58, 'hand'));
 
   /* converse */
   $('#btnStart4').addEventListener('click', () => startCam($('#video4')));
@@ -815,6 +926,13 @@ function wire() {
       if (apply) apply(v);
     });
   };
+  $('#setCommit').addEventListener('change', e => {
+    cfg.commit = e.target.value;
+    localStorage.setItem('mercury.commit', cfg.commit);
+    stab.setMode(cfg.commit);
+    paintConfirm(null, 0, false, []);
+    toast(cfg.commit === 'confirm' ? 'you confirm each letter' : 'letters commit on their own');
+  });
   bind('#setDwell', 'dwell', v => $('#dwellLabel').textContent = `${v} ms`, v => stab.dwell = v);
   bind('#setConf', 'minConf', v => $('#confLabel').textContent = v.toFixed(2), v => stab.minConfidence = v);
   bind('#setAuto', 'auto');
@@ -845,16 +963,26 @@ function wire() {
     if (e.key === 'Escape') { if (!sheet.hidden) { sheet.hidden = true; return; } if (!typing) clearAll(); return; }
     if (typing) return;
     if (e.key === ',') { e.preventDefault(); openSheet(); }
-    if (e.key === ' ') { e.preventDefault(); app.letters += ' '; paintRaw(); }
+    if (e.key === ' ') {
+      e.preventDefault();
+      // space is the confirm key; a word break needs shift, because taking
+      // the proposed letter is what a signer reaches for constantly
+      if (cfg.commit === 'confirm' && !e.shiftKey) takeLetter();
+      else { app.letters += ' '; paintRaw(); paintSuggestions(); }
+    }
     if (e.key === 'Backspace') { e.preventDefault(); app.letters = app.letters.slice(0, -1); paintRaw(); }
     if (e.key === 'Enter') { e.preventDefault(); buildSentence(); }
     // a digit takes the matching completion when one is offered,
     // and otherwise switches mode
     if (e.key >= '1' && e.key <= '9') {
+      // a wrong reading is the common case, so correcting it comes first
+      const alts = $$('.panel.is-on .alt');
+      const alt = alts[+e.key - 1];
+      if (alt) { e.preventDefault(); takeLetter(alt.dataset.letter); return; }
       const chips = $$('.panel.is-on .sugg__chip');
       const pick = chips[+e.key - 1];
       if (pick) { e.preventDefault(); acceptSuggestion(pick.dataset.word); return; }
-      const modes = ['interpret','converse','spell','practice','calibrate','recall','reference'];
+      const modes = ['interpret','converse','avatar','spell','practice','calibrate','recall','reference'];
       if (+e.key <= modes.length) setMode(modes[+e.key - 1]);
     }
   });
@@ -912,6 +1040,7 @@ async function checkLlm() {
 /* ========================================================= BOOT == */
 function boot() {
   // reflect stored settings into the controls
+  $('#setCommit').value = cfg.commit;
   $('#setDwell').value = cfg.dwell; $('#dwellLabel').textContent = `${cfg.dwell} ms`;
   $('#setConf').value = cfg.minConf; $('#confLabel').textContent = cfg.minConf.toFixed(2);
   $('#setAuto').checked = cfg.auto;
@@ -924,6 +1053,7 @@ function boot() {
   paintRaw();
   paintReading(null, 0, false);
   paintSuggestions();
+  paintConfirm(null, 0, false, []);
   wire();
   checkLlm();
   checkVectors();
@@ -959,6 +1089,7 @@ document.readyState === 'loading'
    tested without a pair of hands in front of a camera. */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) {
   window.__mercury = { app, cfg, stab, tracker, voice, onFrame, buildSentence, setMode,
-                      ensemble, holistic, predictor, SESSION,
+                      ensemble, holistic, predictor, SESSION, takeLetter, proposal,
+                      initAvatar, get avatar() { return avatar; },
                       convSend, convReply, acceptSuggestion, paintSuggestions };
 }

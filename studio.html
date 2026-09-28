@@ -23,11 +23,12 @@
   <nav class="modes" role="tablist" aria-label="Mode">
     <button role="tab" class="mode is-on" data-mode="interpret" aria-selected="true"><i>01</i>Interpret</button>
     <button role="tab" class="mode" data-mode="converse" aria-selected="false"><i>02</i>Converse</button>
-    <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>03</i>Spell</button>
-    <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>04</i>Practice</button>
-    <button role="tab" class="mode" data-mode="calibrate" aria-selected="false"><i>05</i>Calibrate</button>
-    <button role="tab" class="mode" data-mode="recall" aria-selected="false"><i>06</i>Recall</button>
-    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>07</i>Alphabet</button>
+    <button role="tab" class="mode" data-mode="avatar" aria-selected="false"><i>03</i>Avatar</button>
+    <button role="tab" class="mode" data-mode="spell" aria-selected="false"><i>04</i>Spell</button>
+    <button role="tab" class="mode" data-mode="practice" aria-selected="false"><i>05</i>Practice</button>
+    <button role="tab" class="mode" data-mode="calibrate" aria-selected="false"><i>06</i>Calibrate</button>
+    <button role="tab" class="mode" data-mode="recall" aria-selected="false"><i>07</i>Recall</button>
+    <button role="tab" class="mode" data-mode="reference" aria-selected="false"><i>08</i>Alphabet</button>
   </nav>
 
   <div class="sbar__end">
@@ -78,6 +79,20 @@
           <div class="meter"><i id="confBar"></i></div>
           <p class="mono-label"><b id="confVal">0.00</b> confidence · <b id="dwellVal">0%</b> held</p>
         </div>
+      </div>
+
+      <div class="confirm" id="confirmBar">
+        <div class="confirm__main">
+          <div class="confirm__glyph" id="confirmGlyph">&mdash;</div>
+          <div class="confirm__meta">
+            <p class="mono-label" id="confirmState">show a handshape</p>
+            <div class="confirm__ring"><i id="confirmFill"></i></div>
+          </div>
+          <button class="btn btn--go confirm__take" id="btnConfirm" disabled>
+            CONFIRM <kbd>space</kbd>
+          </button>
+        </div>
+        <div class="confirm__alts" id="confirmAlts"></div>
       </div>
 
       <div class="cands" id="cands"></div>
@@ -140,6 +155,19 @@
           </div>
           <div class="conv__live"><b id="convLetter">&mdash;</b><span id="convRaw"></span></div>
         </div>
+        <div class="confirm" id="confirmBar2">
+        <div class="confirm__main">
+          <div class="confirm__glyph" id="confirmGlyph2">&mdash;</div>
+          <div class="confirm__meta">
+            <p class="mono-label" id="confirmState2">show a handshape</p>
+            <div class="confirm__ring"><i id="confirmFill2"></i></div>
+          </div>
+          <button class="btn btn--go confirm__take" id="btnConfirm2" disabled>
+            CONFIRM <kbd>space</kbd>
+          </button>
+        </div>
+        <div class="confirm__alts" id="confirmAlts2"></div>
+      </div>
         <div class="sugg sugg--conv" id="convSugg"></div>
         <div class="row">
           <button class="btn" id="btnConvSend">SAY IT</button>
@@ -170,6 +198,34 @@
       </div>
 
     </div>
+  </section>
+
+  <!-- ========================= AVATAR ========================= -->
+  <section class="panel" data-panel="avatar">
+    <div class="av__stage">
+      <canvas id="avCanvas"></canvas>
+      <div class="av__hint">drag to orbit &middot; scroll to zoom</div>
+      <div class="av__now" id="avNow">&mdash;</div>
+      <div class="spell__strip" id="avStrip"></div>
+    </div>
+    <aside class="read">
+      <p class="mono-label">THE MESSENGER SIGNS</p>
+      <textarea id="avInput" rows="3" placeholder="Anything you like.">HELLO MERCURY</textarea>
+      <div class="row">
+        <button class="btn btn--go" id="btnAvPlay">SIGN IT</button>
+        <button class="btn btn--ghost" id="btnAvStop">RESET</button>
+      </div>
+      <label class="slider">
+        <span class="mono-label">SPEED <b id="avSpeedVal">1.0&times;</b></span>
+        <input type="range" id="avSpeed" min="0.4" max="2.4" step="0.1" value="1">
+      </label>
+      <div class="row">
+        <button class="btn btn--ghost" id="btnAvFront">FRONT</button>
+        <button class="btn btn--ghost" id="btnAvSide">SIDE</button>
+        <button class="btn btn--ghost" id="btnAvHand">HAND</button>
+      </div>
+      <p class="note">The avatar&rsquo;s hand is the same 21&#8209;landmark rig the recogniser reads, so what it signs is exactly the shape Mercury is looking for. Rendered in quicksilver &mdash; a figure that is almost human is worse than one that is plainly a machine.</p>
+    </aside>
   </section>
 
   <!-- ========================= SPELL ========================= -->
@@ -312,6 +368,15 @@
       </label>
 
       <label class="field">
+        <span class="mono-label">HOW LETTERS ARE TAKEN</span>
+        <select id="setCommit">
+          <option value="confirm">Confirm each letter &mdash; you decide</option>
+          <option value="auto">Automatic &mdash; hold the shape</option>
+        </select>
+        <em>Confirm is slower and far more accurate: Mercury proposes, you accept. Automatic commits on its own after the hold below.</em>
+      </label>
+
+      <label class="field">
         <span class="mono-label">HOLD TO COMMIT <b id="dwellLabel">380 ms</b></span>
         <input type="range" id="setDwell" min="150" max="1200" step="10" value="380">
         <em>How long a handshape must be held before Mercury accepts it.</em>
@@ -352,12 +417,15 @@
       <div class="sheet__keys">
         <p class="mono-label">KEYBOARD</p>
         <ul>
-          <li><kbd>Space</kbd> insert a word break</li>
+          <li><kbd>Space</kbd> take the letter Mercury is proposing</li>
+          <li><kbd>1</kbd>&ndash;<kbd>4</kbd> take one of the alternatives instead</li>
+          <li><kbd>1</kbd>&ndash;<kbd>3</kbd> accept a word completion, when one is offered</li>
+          <li><kbd>Shift</kbd>+<kbd>Space</kbd> insert a word break</li>
           <li><kbd>Backspace</kbd> delete the last letter</li>
           <li><kbd>Enter</kbd> build the sentence and speak it</li>
           <li><kbd>Esc</kbd> clear</li>
           <li><kbd>,</kbd> settings</li>
-          <li><kbd>1</kbd>–<kbd>4</kbd> switch mode</li>
+          <li><kbd>1</kbd>&ndash;<kbd>7</kbd> switch mode, when nothing is proposed</li>
         </ul>
       </div>
 

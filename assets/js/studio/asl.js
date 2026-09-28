@@ -218,21 +218,47 @@ export function classify(lm) {
    lead for a dwell period, and cannot immediately re-commit.
    ================================================================ */
 export class Stabiliser {
-  constructor({ dwell = 380, minConfidence = 0.55, cooldown = 260, window = 9 } = {}) {
+  /**
+   * @param mode 'confirm' — propose a letter and wait to be told to take it.
+   *             'auto'    — commit once the shape has been held long enough.
+   *
+   * Confirm is the default because auto-commit is unforgiving: at natural
+   * signing speed a hand passes through several shapes on the way to the one
+   * it means, and every one of those is a chance to commit the wrong letter.
+   * Proposing and waiting turns a race against a timer into a decision.
+   */
+  constructor({ dwell = 380, minConfidence = 0.55, cooldown = 260, window = 9,
+                mode = 'confirm', settle = 260 } = {}) {
     this.dwell = dwell;
     this.minConfidence = minConfidence;
     this.cooldown = cooldown;
     this.window = window;
+    this.mode = mode;
+    this.settle = settle;          // how long a reading must hold to be offered
     this.history = [];
     this.candidate = null;
     this.since = 0;
     this.lastCommit = 0;
     this.lastLetter = null;
+    this.ranked = [];
   }
 
-  reset() { this.history.length = 0; this.candidate = null; this.lastLetter = null; }
+  reset() {
+    this.history.length = 0;
+    this.candidate = null;
+    this.lastLetter = null;
+    this.ranked = [];
+  }
 
-  /** @returns {{letter, progress, committed}} */
+  setMode(mode) { this.mode = mode; this.reset(); }
+
+  /**
+   * @returns {{letter, progress, committed, steady, ranked}}
+   *   letter    the current best reading
+   *   progress  0..1 toward being offered (confirm) or committed (auto)
+   *   steady    the reading has held long enough to be trusted
+   *   committed a letter to take, or null
+   */
   push(result, now) {
     this.history.push(result);
     if (this.history.length > this.window) this.history.shift();
@@ -246,21 +272,48 @@ export class Stabiliser {
     let lead = null, leadScore = 0;
     for (const [k, v] of votes) if (v > leadScore) { leadScore = v; lead = k; }
 
+    this.ranked = result?.ranked || [];
+
     const strong = lead && (leadScore / this.history.length) >= this.minConfidence;
-    if (!strong) { this.candidate = null; return { letter: lead, progress: 0, committed: null }; }
+    if (!strong) {
+      this.candidate = null;
+      return { letter: lead, progress: 0, committed: null, steady: false, ranked: this.ranked };
+    }
 
     if (lead !== this.candidate) { this.candidate = lead; this.since = now; }
 
     const held = now - this.since;
-    const progress = clamp01(held / this.dwell);
-    let committed = null;
+    const target = this.mode === 'confirm' ? this.settle : this.dwell;
+    const progress = clamp01(held / target);
+    const steady = progress >= 1;
 
-    if (progress >= 1 && now - this.lastCommit > this.cooldown) {
+    // In confirm mode nothing is ever taken automatically; the studio calls
+    // take() when the signer says so.
+    if (this.mode === 'confirm') {
+      return { letter: lead, progress, committed: null, steady, ranked: this.ranked };
+    }
+
+    let committed = null;
+    if (steady && now - this.lastCommit > this.cooldown) {
       committed = lead;
       this.lastCommit = now;
       this.lastLetter = lead;
-      this.since = now;          // require another full dwell to repeat
+      this.since = now;
     }
-    return { letter: lead, progress, committed };
+    return { letter: lead, progress, committed, steady, ranked: this.ranked };
+  }
+
+  /**
+   * Accept the proposal (or an alternative the signer picked instead).
+   * @returns the letter taken, or null if there was nothing to take
+   */
+  take(letter = null, now = performance.now()) {
+    const chosen = letter || this.candidate;
+    if (!chosen) return null;
+    this.lastCommit = now;
+    this.lastLetter = chosen;
+    this.candidate = null;
+    this.history.length = 0;      // start the next letter from a clean read
+    return chosen;
   }
 }

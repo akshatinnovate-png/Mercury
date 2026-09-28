@@ -236,6 +236,15 @@ class Mercury(SimpleHTTPRequestHandler):
         self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
         super().end_headers()
 
+    def handle_one_request(self):
+        """Serving 8MB models to a browser that navigates away mid-download
+        raises BrokenPipeError and dumps a traceback that looks like a crash.
+        The client hanging up is normal; say nothing about it."""
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+
     def log_message(self, fmt, *args):
         sys.stderr.write("  %s\n" % (fmt % args))
 

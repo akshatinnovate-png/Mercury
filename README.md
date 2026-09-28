@@ -31,6 +31,13 @@ away — it travels, the way a message travels:
 
 `studio.html` is the working part. Four modes:
 
+**Avatar** — a quicksilver figure that fingerspells what you type, in three
+dimensions, with orbit and a close view of the hand. Its hand is the same
+21-landmark rig the recogniser reads, so what it signs is exactly the shape
+Mercury is looking for. Chrome rather than skin on purpose: a figure that is
+almost human is worse than one that is plainly a machine, and polished metal
+carries a handshape in its reflections.
+
 **Converse** — the whole point. One camera, one microphone, two people. The
 signer is heard; the speaker is seen. Signs become speech on the left, speech
 becomes fingerspelling on the right, and both sides land in one transcript.
@@ -189,6 +196,18 @@ neural embedder — deliberately, so search works on a clean clone with no
 model download. It captures lexical overlap, which is what makes "find
 where I mentioned the pharmacy" work. It does not capture paraphrase.
 
+### Confirm, don't guess
+
+By default Mercury **proposes** a letter and waits. Nothing is committed until
+you take it — space, a button, or a number key to take one of the alternatives
+instead. The ring fills as the reading settles; only then can it be taken.
+
+This is slower than committing on a timer, and far more accurate. At natural
+signing speed a hand passes through several shapes on the way to the one it
+means, and automatic commit takes whichever one the clock happened to land on.
+Proposing and waiting turns a race against a timer into a decision. Automatic
+mode is still there in settings for anyone who prefers it.
+
 ### Predictive fingerspelling
 
 Spelling letter by letter is slow, so Mercury offers completions after two or
@@ -300,11 +319,12 @@ assets/
     core/   gfx (3D + ticker) · boot · cursor · scroll · hud
     scenes/ void · planet · descent · hand · pipeline · voice · lab · atmos
     studio/ rig · alphabet · asl · encode · neural · ensemble
-            holistic · predict · camera · overlay · speller · speech · llm
+            holistic · predict · avatar · camera · overlay · speller
+            speech · llm
     ui/     reveal
   models/   hand · face · pose landmarkers · handshape.onnx
   textures/ mercury-map.png
-  vendor/   GSAP, Lenis, MediaPipe tasks-vision, ONNX Runtime Web
+  vendor/   GSAP, Lenis, MediaPipe tasks-vision, ONNX Runtime Web, three.js
 server/
   app.py      static files, Groq proxy, vector endpoints
   vectors.py  Qdrant collections and the text embedding

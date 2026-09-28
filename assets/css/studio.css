@@ -385,3 +385,48 @@ kbd{font-family:var(--mono);font-size:.62rem;background:rgba(255,255,255,.1);
   .conv{grid-template-columns:1fr;grid-template-rows:auto auto auto}
   .conv__log{order:3;min-height:16rem}
 }
+
+/* ================================================================
+   CONFIRM-TO-COMMIT
+   Mercury proposes; the signer decides. The ring fills as the reading
+   settles, and only then can it be taken.
+   ================================================================ */
+.confirm{border:1px solid var(--rule);border-radius:8px;padding:.7rem;display:grid;gap:.6rem;
+  background:rgba(255,255,255,.03);transition:border-color .3s,background .3s}
+.confirm.is-ready{border-color:var(--signal);background:rgba(232,237,246,.07)}
+.confirm__main{display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:center}
+.confirm__glyph{width:62px;height:62px;display:grid;place-items:center;flex:none;
+  border:1.5px solid var(--rule);border-radius:7px;font-size:2rem;font-weight:800;
+  font-variation-settings:'wdth' 115,'wght' 820;line-height:1;transition:all .25s}
+.confirm.is-ready .confirm__glyph{border-color:var(--signal);background:rgba(232,237,246,.12);
+  color:#fff}
+.confirm__meta{min-width:0;display:grid;gap:.4rem}
+.confirm__ring{height:5px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
+.confirm__ring i{display:block;height:100%;width:0%;background:var(--signal);
+  transition:width .08s linear}
+.confirm__take{min-width:0;white-space:nowrap;display:flex;align-items:center;gap:.5em}
+.confirm__take kbd{background:rgba(0,0,0,.18);border-color:rgba(0,0,0,.25);
+  color:inherit;font-size:.78em}
+.confirm__take:disabled{opacity:.3}
+.confirm__alts{display:flex;gap:.3rem;flex-wrap:wrap;min-height:1.7rem}
+.alt{appearance:none;cursor:pointer;display:flex;align-items:baseline;gap:.4em;
+  background:rgba(255,255,255,.05);border:1px solid var(--rule);border-radius:5px;
+  padding:.3rem .55rem;color:var(--fg-mute);font-family:var(--mono);font-size:.56rem;
+  transition:all .2s}
+.alt:hover{background:rgba(255,255,255,.13);color:#fff;border-color:#fff}
+.alt b{font-family:var(--display);font-size:.95rem;font-weight:700;color:#fff}
+.alt kbd{font-size:.86em;min-width:0;padding:0 .28em}
+
+/* ================================================================
+   AVATAR
+   ================================================================ */
+.av__stage{position:relative;background:radial-gradient(70% 70% at 50% 34%,#161b25,#05070c);
+  overflow:hidden;min-height:46vh}
+.av__stage canvas{position:absolute;inset:0;width:100%;height:100%;
+  touch-action:none;cursor:grab}
+.av__stage canvas:active{cursor:grabbing}
+.av__hint{position:absolute;right:1rem;top:1rem;z-index:3;font-family:var(--mono);
+  font-size:.54rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.av__now{position:absolute;left:1rem;top:1rem;z-index:3;font-size:3.2rem;font-weight:800;
+  line-height:1;font-variation-settings:'wdth' 115,'wght' 820;color:rgba(255,255,255,.9);
+  text-shadow:0 2px 30px rgba(0,0,0,.6)}
