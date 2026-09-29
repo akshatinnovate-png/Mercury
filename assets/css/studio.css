@@ -430,3 +430,11 @@ kbd{font-family:var(--mono);font-size:.62rem;background:rgba(255,255,255,.1);
 .av__now{position:absolute;left:1rem;top:1rem;z-index:3;font-size:3.2rem;font-weight:800;
   line-height:1;font-variation-settings:'wdth' 115,'wght' 820;color:rgba(255,255,255,.9);
   text-shadow:0 2px 30px rgba(0,0,0,.6)}
+
+/* Keep-in-one-sentence: the single most important switch in the panel, so
+   it sits next to the letters rather than buried in settings. */
+.keep{display:flex;align-items:center;gap:.5rem;cursor:pointer;
+  font-family:var(--mono);font-size:.56rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--fg-mute);user-select:none}
+.keep input{width:15px;height:15px;accent-color:var(--signal);flex:none;cursor:pointer}
+.keep:hover{color:#fff}

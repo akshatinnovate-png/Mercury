@@ -31,7 +31,7 @@ const cfg = {
   commit: localStorage.getItem('mercury.commit') || 'confirm',
   dwell:  +(localStorage.getItem('mercury.dwell') || 380),
   minConf:+(localStorage.getItem('mercury.minConf') || 0.55),
-  auto:   localStorage.getItem('mercury.auto') !== '0',
+  auto:   localStorage.getItem('mercury.auto') === '1',
   mirror: localStorage.getItem('mercury.mirror') !== '0',
   camera: localStorage.getItem('mercury.camera') || ''
 };
@@ -780,6 +780,20 @@ function wire() {
     URL.revokeObjectURL(url);
   });
 
+  /* keep-in-one-sentence: checked means never build on its own */
+  const keeps = ['#keepOne', '#keepOne2'].map(sel => $(sel)).filter(Boolean);
+  const syncKeep = on => {
+    cfg.auto = !on;
+    localStorage.setItem('mercury.auto', cfg.auto ? '1' : '0');
+    keeps.forEach(k => { k.checked = on; });
+    const box = $('#setAuto'); if (box) box.checked = cfg.auto;
+  };
+  keeps.forEach(k => k.addEventListener('change', e => {
+    syncKeep(e.target.checked);
+    toast(e.target.checked ? 'letters will keep building' : 'a pause ends the sentence');
+  }));
+  syncKeep(!cfg.auto);
+
   /* confirm */
   $('#btnConfirm').addEventListener('click', () => takeLetter());
   $('#btnConfirm2').addEventListener('click', () => takeLetter());
@@ -935,7 +949,11 @@ function wire() {
   });
   bind('#setDwell', 'dwell', v => $('#dwellLabel').textContent = `${v} ms`, v => stab.dwell = v);
   bind('#setConf', 'minConf', v => $('#confLabel').textContent = v.toFixed(2), v => stab.minConfidence = v);
-  bind('#setAuto', 'auto');
+  $('#setAuto').addEventListener('change', e => {
+    cfg.auto = e.target.checked;
+    localStorage.setItem('mercury.auto', cfg.auto ? '1' : '0');
+    ['#keepOne', '#keepOne2'].forEach(sel => { const k = $(sel); if (k) k.checked = !cfg.auto; });
+  });
   $('#setSpeak').addEventListener('change', e => voice.setEnabled(e.target.checked));
   $('#setRate').addEventListener('input', e => {
     voice.setRate(+e.target.value);
@@ -1044,6 +1062,7 @@ function boot() {
   $('#setDwell').value = cfg.dwell; $('#dwellLabel').textContent = `${cfg.dwell} ms`;
   $('#setConf').value = cfg.minConf; $('#confLabel').textContent = cfg.minConf.toFixed(2);
   $('#setAuto').checked = cfg.auto;
+  ['#keepOne', '#keepOne2'].forEach(sel => { const k = $(sel); if (k) k.checked = !cfg.auto; });
   $('#setSpeak').checked = voice.enabled;
   $('#setRate').value = voice.rate; $('#rateLabel').textContent = `${voice.rate.toFixed(2)}×`;
   if (localKey()) $('#setKey').value = '••••••••';

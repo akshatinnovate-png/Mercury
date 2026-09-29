@@ -111,6 +111,10 @@
 
       <div class="read__out">
         <p class="mono-label">LETTERS <button class="mini" id="btnClear" title="Clear (Esc)">clear</button></p>
+        <label class="keep">
+          <input type="checkbox" id="keepOne" checked>
+          <span>Keep in one sentence</span>
+        </label>
         <p class="raw" id="rawOut"><span class="raw__empty">nothing yet</span></p>
         <div class="sugg" id="sugg"></div>
       </div>
@@ -168,6 +172,10 @@
         </div>
         <div class="confirm__alts" id="confirmAlts2"></div>
       </div>
+        <label class="keep">
+          <input type="checkbox" id="keepOne2" checked>
+          <span>Keep in one sentence</span>
+        </label>
         <div class="sugg sugg--conv" id="convSugg"></div>
         <div class="row">
           <button class="btn" id="btnConvSend">SAY IT</button>
@@ -394,7 +402,7 @@
       </label>
 
       <label class="field field--row">
-        <input type="checkbox" id="setAuto" checked>
+        <input type="checkbox" id="setAuto">
         <span>Build the sentence automatically after a pause</span>
       </label>
 
