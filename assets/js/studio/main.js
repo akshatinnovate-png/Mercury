@@ -13,6 +13,7 @@ import { Ensemble } from './ensemble.js';
 import { Holistic } from './holistic.js';
 import { Predictor } from './predict.js';
 import { Avatar } from './avatar.js';
+import { Ambience } from './ambience.js';
 import { encode } from './encode.js';
 import { drawOverlay } from './overlay.js';
 import { Speller } from './speller.js';
@@ -57,6 +58,7 @@ const SESSION = (() => {
 })();
 
 const ensemble = new Ensemble({ session: SESSION });
+let ambience = null;
 const predictor = new Predictor();
 const holistic = new Holistic();
 let nmm = null;                 // latest non-manual reading
@@ -130,6 +132,7 @@ async function onFrame({ hands }, now) {
 
   if (!hands.length) {
     drawOverlay(ctx, w, h, [], { mirror: tracker.mirror });
+    ambience?.setEnergy(0);
     stab.reset();
     paintReading(null, 0, inPractice);
     if (!inPractice && !inCalibrate && !inConverse && cfg.auto && app.letters && now - app.lastCommitAt > 2200) {
@@ -153,6 +156,7 @@ async function onFrame({ hands }, now) {
 
   paintReading(res, progress, inPractice);
   paintSources(res);
+  ambience?.setEnergy(0.35 + (res.confidence || 0) * 0.65);
   if (!inPractice && !inCalibrate) paintConfirm(letter, progress, steady, ranked);
   if (inConverse) {
     $('#convLetter').textContent = letter || '—';
@@ -1079,6 +1083,11 @@ function boot() {
   setMode('interpret');
 
   if (!voice.supported) toast('this browser cannot speak aloud');
+
+  // Decorative only. Wrapped because a failure here must never cost the
+  // studio anything it actually does.
+  try { ambience = new Ambience($('#ambience')).start(); }
+  catch { /* the studio looks plainer and works identically */ }
 
   // The neural classifier and the vector store are both optional: the
   // studio recognises with geometry alone if either is missing.

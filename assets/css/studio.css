@@ -438,3 +438,121 @@ kbd{font-family:var(--mono);font-size:.62rem;background:rgba(255,255,255,.1);
   text-transform:uppercase;color:var(--fg-mute);user-select:none}
 .keep input{width:15px;height:15px;accent-color:var(--signal);flex:none;cursor:pointer}
 .keep:hover{color:#fff}
+
+/* ================================================================
+   STUDIO SURFACES
+   The acts are rendered scenes; the studio was flat panels on black.
+   These rules put the instrument on glass over that scene, so the two
+   halves of the project read as one product.
+
+   Everything below is presentation. No layout box changes size, no
+   control moves, and every id and class hook is untouched.
+   ================================================================ */
+
+/* the scene, behind everything, inert */
+.ambience{
+  position:fixed;inset:0;width:100%;height:100%;
+  z-index:0;pointer-events:none;
+}
+.studio > *:not(.ambience){ position:relative; z-index:1 }
+.studio{ background:var(--void-0) }
+
+/* ---------------- top bar: glass, with a lit top edge ---------------- */
+.sbar{
+  background:linear-gradient(180deg,rgba(16,21,33,.82),rgba(6,9,17,.74));
+  border-bottom:1px solid rgba(255,255,255,.09);
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 12px 34px -22px #000;
+}
+.modes{
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  box-shadow:0 1px 0 rgba(255,255,255,.07) inset;
+}
+.mode.is-on{
+  background:linear-gradient(180deg,#fff,#dfe5f0);
+  box-shadow:0 2px 10px -3px rgba(226,233,245,.5);
+}
+.chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset;
+}
+
+/* ---------------- panels sit on the scene, not on black ---------------- */
+.panel{ background:transparent }
+.panel.is-on{ gap:0 }
+
+.read{
+  background:linear-gradient(180deg,rgba(12,16,26,.80),rgba(7,10,18,.88));
+  border-left:1px solid rgba(255,255,255,.09);
+  box-shadow:1px 0 0 rgba(255,255,255,.04) inset, -24px 0 48px -36px #000;
+}
+
+/* ---------------- the camera frame ---------------- */
+.feed,.spell__stage,.av__stage,.spell__stage--conv{
+  /* translucent on purpose: the ambience behind is the point, and the
+     video covers this entirely once the camera is running */
+  background:
+    radial-gradient(120% 90% at 50% 38%,rgba(20,27,42,.30),rgba(4,6,13,.55));
+  box-shadow:0 0 0 1px rgba(255,255,255,.055) inset;
+}
+/* a vignette and a hairline, so the feed reads as a lens rather than a div */
+.feed::after,.spell__stage::after,.av__stage::after{
+  content:"";position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:radial-gradient(118% 92% at 50% 44%,transparent 52%,rgba(2,4,9,.62) 100%);
+}
+.feed__state{
+  background:
+    radial-gradient(64% 58% at 50% 44%,rgba(12,18,31,.72),rgba(4,6,13,.42));
+}
+.feed__inner h2{
+  background:linear-gradient(180deg,#fff,#aab6c9);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+/* ---------------- raised surfaces inside the rail ---------------- */
+.glyph,.confirm,.src,.raw,.sentence,.cand,.log li,.score div,
+.prac-ref,.recall__list li,.chat li,.nmm,.heard,.cal__grid b{
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset;
+}
+.glyph,.confirm,.raw,.cand{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+}
+.sentence{
+  background:linear-gradient(180deg,rgba(159,180,208,.10),rgba(159,180,208,.035));
+}
+.confirm.is-ready{
+  background:linear-gradient(180deg,rgba(232,237,246,.11),rgba(232,237,246,.035));
+  box-shadow:0 0 0 1px rgba(232,237,246,.28), 0 6px 26px -14px rgba(226,233,245,.55);
+}
+.glyph.is-hot{
+  box-shadow:0 0 0 1px rgba(232,237,246,.4), 0 5px 22px -12px rgba(226,233,245,.6);
+}
+
+/* buttons get a little material too */
+.btn{
+  background:linear-gradient(180deg,#fff,#e4e9f2);
+  box-shadow:0 2px 12px -5px rgba(226,233,245,.55);
+}
+.btn--ghost{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset;
+}
+.btn--go{
+  background:linear-gradient(180deg,#f2f5fb,#cfd8e6);
+  box-shadow:0 3px 18px -7px rgba(226,233,245,.75);
+}
+
+/* the live dot earns a glow, since it is the one thing that is alive */
+.live .dot,.chip.is-on .dot{ box-shadow:0 0 9px rgba(226,233,245,.75) }
+
+/* keep the ambience off the two panels that own their own canvas */
+.panel[data-panel="avatar"] .av__stage,
+.panel[data-panel="reference"]{ backdrop-filter:blur(1px) }
+.abc{ background:rgba(255,255,255,.055) }
+.abc__cell{ background:linear-gradient(180deg,rgba(12,16,26,.86),rgba(7,10,18,.9)) }
+.abc__cell:hover{ background:linear-gradient(180deg,rgba(20,26,40,.9),rgba(10,14,24,.92)) }
+
+.recall{ background:linear-gradient(180deg,rgba(10,14,24,.72),rgba(6,9,17,.84)) }
+.conv__side,.conv__log{
+  background:linear-gradient(180deg,rgba(12,16,26,.80),rgba(7,10,18,.88));
+}
+.conv{ background:rgba(255,255,255,.07) }
